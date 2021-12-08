@@ -1,0 +1,27 @@
+*.wasm
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+main
+vue/node_modules
+flow/atlantico/node_modules
+flow/node_modules
+vue/dist
+secret.yml
+.idea/
+gen
+ethereum/node_modules
+ethereum/build/contracts
+.env
+ethereum/.env
+.vscode
