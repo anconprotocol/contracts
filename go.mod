@@ -31,7 +31,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/ethereum/go-ethereum v1.10.13 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-    	github.com/flynn/noise v1.0.0 // indirect
+	github.com/flynn/noise v1.0.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.7.4 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect

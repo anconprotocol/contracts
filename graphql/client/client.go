@@ -3,6 +3,7 @@
 package graphqlclient
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Yamashou/gqlgenc/client"
@@ -16,4 +17,34 @@ func NewClient(cli *http.Client, baseURL string, options ...client.HTTPRequestOp
 	return &Client{Client: client.NewClient(cli, baseURL, options...)}
 }
 
-type Query struct{}
+type Query struct {
+	Metadata *Ancon721Metadata "json:\"metadata\" graphql:\"metadata\""
+}
+type Transaction struct {
+	Metadata DagLink "json:\"metadata\" graphql:\"metadata\""
+}
+type TransferOwnership struct {
+	Metadata struct {
+		Cid string "json:\"cid\" graphql:\"cid\""
+	} "json:\"metadata\" graphql:\"metadata\""
+}
+
+const TransferOwnershipDocument = `mutation transferOwnership ($tx: MetadataTransactionInput!) {
+	metadata(tx: $tx) {
+		cid
+	}
+}
+`
+
+func (c *Client) TransferOwnership(ctx context.Context, tx MetadataTransactionInput, httpRequestOptions ...client.HTTPRequestOption) (*TransferOwnership, error) {
+	vars := map[string]interface{}{
+		"tx": tx,
+	}
+
+	var res TransferOwnership
+	if err := c.Client.Post(ctx, "transferOwnership", TransferOwnershipDocument, &res, vars, httpRequestOptions...); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
