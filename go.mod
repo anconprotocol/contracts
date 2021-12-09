@@ -16,6 +16,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0
+	github.com/wasmerio/wasmer-go v1.0.4
 )
 
 require (
