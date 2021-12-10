@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anconprotocol/contracts/hexutil"
-	"github.com/anconprotocol/node/x/anconsync/handler/durin"
 )
 
 type Contract struct {

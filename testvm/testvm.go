@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/anconprotocol/contracts/hexutil"
-	"github.com/anconprotocol/node/x/anconsync"
+	"github.com/anconprotocol/sdk"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
