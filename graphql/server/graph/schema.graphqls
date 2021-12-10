@@ -43,4 +43,4 @@ type Transaction {
 
 
 
-directive @focusedTransform(cid: String!, path: String!,previousValue: String!,value: String!) on QUERY | MUTATION | FIELD
+directive @focusedTransform(cid: String!, path: String!,previousValue: String!,value: String!) on QUERY | MUTATION | FIELD      
