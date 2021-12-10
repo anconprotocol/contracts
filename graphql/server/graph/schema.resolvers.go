@@ -21,7 +21,7 @@ import (
 func (r *queryResolver) Metadata(ctx context.Context, cid string, path string) (*model.Ancon721Metadata, error) {
 	dag := ctx.Value("dag").(*sdk.AnconSyncContext)
 
-	jsonmodel, err := anconsync.ReadFromStore(dag.Store, cid, path)
+	jsonmodel, err := sdk.ReadFromStore(dag.Store, cid, path)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (r *queryResolver) Metadata(ctx context.Context, cid string, path string) (
 func (r *transactionResolver) Metadata(ctx context.Context, tx model.MetadataTransactionInput) (*model.DagLink, error) {
 	dag := ctx.Value("dag").(*sdk.AnconSyncContext)
 
-	lnk, err := anconsync.ParseCidLink(tx.Cid)
+	lnk, err := sdk.ParseCidLink(tx.Cid)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (r *transactionResolver) Metadata(ctx context.Context, tx model.MetadataTra
 		func(progress traversal.Progress, prev datamodel.Node) (datamodel.Node, error) {
 			nb := basicnode.Prototype.Any.NewBuilder()
 			// set previous hash, not current
-			l, _ := anconsync.ParseCidLink(tx.Cid)
+			l, _ := sdk.ParseCidLink(tx.Cid)
 			nb.AssignLink(l)
 			return nb.Build(), nil
 		}, false)
@@ -77,7 +77,7 @@ func (r *transactionResolver) Metadata(ctx context.Context, tx model.MetadataTra
 
 	link := dag.Store.Store(ipld.LinkContext{}, n)
 
-	// jsonmodel, err := anconsync.ReadFromStore(dag.Store, link.String(), "/")
+	// jsonmodel, err := sdk.ReadFromStore(dag.Store, link.String(), "/")
 	// if err != nil {
 	// 	return nil, err
 	// }
