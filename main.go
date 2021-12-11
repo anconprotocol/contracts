@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
+	"strconv"
+	"strings"
 
 	"github.com/anconprotocol/contracts/hexutil"
 	"github.com/anconprotocol/sdk"
@@ -13,10 +16,10 @@ func main() {
 	s := sdk.NewStorage(".ancon")
 	w := NewVM(s)
 
-	args := make([]interface{}, 3)
-	args[0] = "a"
-	args[1] = "1"
-	args[2] = "2"
+	args := make([]int, 3)
+	args[0], _ = strconv.Atoi("a")
+	args[1], _ = strconv.Atoi("a")
+	args[2], _ = strconv.Atoi("a")
 
 	bz, _ := json.Marshal(args)
 	h := hexutil.Encode(bz)
@@ -47,7 +50,7 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 
 	wasmBytes, _ := ioutil.ReadFile("/home/rogelio/Code/ancon-contracts/functions/testapp/target/wasm32-wasi/debug/testapp.wasm")
 
-	var args []interface{}
+	var args []int
 	hexbytes, err := hexutil.Decode((string)(v))
 
 	err = json.Unmarshal(hexbytes, &args)
@@ -55,17 +58,13 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 		panic(err)
 	}
 
-	// targs := make([]interface{}, len(args))
-	// for i := 0; i < len(args); i++ {
-	// 	targs[i] = cas	t.ToInt32(args[i])
-	// }
-
 	store := wasmer.NewStore(e.engine)
 
 	// Compiles the module
 	module, err := wasmer.NewModule(store, wasmBytes)
 
 	if err != nil {
+
 		panic(err)
 	}
 	wasiEnv, _ := wasmer.NewWasiStateBuilder("wasi-program").
@@ -75,7 +74,7 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 		// MapDirectory("./", ".").
 		Finalize()
 	importObject, err := wasiEnv.GenerateImportObject(store, module)
-	
+
 	if err != nil {
 		panic(err)
 	}
@@ -90,6 +89,7 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 	// 	store,
 	// 	wasmer.NewGlobalType(wasmer.NewValueType(wasmer.I32), wasmer.IMMUTABLE),
 	// 	wasmer.NewValue(nil, wasmer.AnyRef),
+
 	// )
 
 	importObject.Register(
@@ -103,7 +103,6 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 		map[string]wasmer.IntoExtern{
 			"debug": hostFunction,
 		},
-		
 	)
 
 	instance, err := wasmer.NewInstance(module, importObject)
@@ -118,14 +117,20 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 	}
 	start()
 
-	main, err := instance.Exports.GetFunction("addMetadata")
+	main, err := instance.Exports.GetFunction("test")
 
 	if err != nil {
 		panic(err)
 	}
 	// Calls that exported function with Go standard values. The WebAssembly
 	// types are inferred and values are casted automatically.
-	result, err := main((args)...)
+
+	s := hex.EncodeToString(hexbytes)
+	s = strings.Replace(s, "0x", "", 1)
+
+	w, err := strconv.Atoi(s)
+
+	result, err := main(w)
 
 	if err != nil {
 		panic(err)
