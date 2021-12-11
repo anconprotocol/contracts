@@ -1,4 +1,4 @@
-package testvm
+package main
 
 import (
 	"encoding/json"
@@ -9,14 +9,30 @@ import (
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
+func main() {
+	s := sdk.NewStorage(".ancon")
+	w := NewVM(s)
+
+	args := make([]interface{}, 3)
+	args[0] = "a"
+	args[1] = "1"
+	args[2] = "2"
+
+	bz, _ := json.Marshal(args)
+	h := hexutil.Encode(bz)
+
+	input := ([]byte)(h)
+	w.Run(input)
+}
+
 // WASM is the ethereum virtual machine
 type WASM struct {
 	engine *wasmer.Engine
-	store  anconsync.Storage
+	store  sdk.Storage
 }
 
 // NewEVM creates a new WASM
-func NewVM(s anconsync.Storage) *WASM {
+func NewVM(s sdk.Storage) *WASM {
 	engine := wasmer.NewEngine()
 	return &WASM{store: s, engine: engine}
 }
@@ -29,19 +45,19 @@ func (e *WASM) Name() string {
 // Run implements the runtime interface
 func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 
-	wasmBytes, _ := ioutil.ReadFile("/home/rogelio/Code/ancon-contracts/module.wasm")
+	wasmBytes, _ := ioutil.ReadFile("/home/rogelio/Code/ancon-contracts/functions/testapp/target/wasm32-wasi/debug/testapp.wasm")
 
 	var args []interface{}
-	hexbytes := hexutil.MustDecode(v.String())
+	hexbytes, err := hexutil.Decode((string)(v))
 
-	err := json.Unmarshal(hexbytes, &args)
+	err = json.Unmarshal(hexbytes, &args)
 	if err != nil {
 		panic(err)
 	}
 
 	// targs := make([]interface{}, len(args))
 	// for i := 0; i < len(args); i++ {
-	// 	targs[i] = cast.ToInt32(args[i])
+	// 	targs[i] = cas	t.ToInt32(args[i])
 	// }
 
 	store := wasmer.NewStore(e.engine)
@@ -70,21 +86,33 @@ func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
 			return []wasmer.Value{wasmer.NewI32(42)}, nil
 		},
 	)
+	// hostGlobal := wasmer.NewGlobal(
+	// 	store,
+	// 	wasmer.NewGlobalType(wasmer.NewValueType(wasmer.I32), wasmer.IMMUTABLE),
+	// 	wasmer.NewValue(nil, wasmer.AnyRef),
+	// )
+
 	importObject.Register(
 		"env",
 		map[string]wasmer.IntoExtern{
-			"github.com/anconprotocol/contracts/sdk.FocusedTransform": hostFunction,
+			"focused_transform": hostFunction,
 		},
+	)
+	importObject.Register(
+		"go",
+		map[string]wasmer.IntoExtern{
+			"debug": hostFunction,
+		},
+		
 	)
 
 	instance, err := wasmer.NewInstance(module, importObject)
- 
 
 	if err != nil {
 		panic(err)
 	}
 	start, err := instance.Exports.GetWasiStartFunction()
- 
+
 	if err != nil {
 		panic(err)
 	}

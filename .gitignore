@@ -25,3 +25,4 @@ ethereum/build/contracts
 .env
 ethereum/.env
 .vscode
+**/target
