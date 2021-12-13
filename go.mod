@@ -13,11 +13,15 @@ require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/Yamashou/gqlgenc v0.0.2
 	github.com/anconprotocol/sdk v0.1.0
-	github.com/bytecodealliance/wasmtime-go v0.31.0
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/wasmerio/wasmer-go v1.0.4
+)
+
+require (
+	github.com/second-state/WasmEdge-go v0.9.0
+	github.com/spf13/cast v1.4.1
 )
 
 require (
@@ -60,7 +64,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/cast v1.4.1
 	github.com/umbracle/fastrlp v0.0.0-20210128110402-41364ca56ca8 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect

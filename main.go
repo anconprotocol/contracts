@@ -1,176 +1,89 @@
 package main
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"io/ioutil"
-	"strconv"
-	"strings"
+	"fmt"
+	"os"
 
-	"github.com/anconprotocol/contracts/hexutil"
-	"github.com/anconprotocol/sdk"
-	"github.com/wasmerio/wasmer-go/wasmer"
+	"github.com/second-state/WasmEdge-go/wasmedge"
 )
 
 func main() {
-	s := sdk.NewStorage(".ancon")
-	w := NewVM(s)
+	/// Expected Args[0]: program name (./bindgen_funcs)
+	/// Expected Args[1]: wasm or wasm-so file (rust_bindgen_funcs_lib_bg.wasm))
 
-	args := make([]int, 3)
-	args[0], _ = strconv.Atoi("a")
-	args[1], _ = strconv.Atoi("a")
-	args[2], _ = strconv.Atoi("a")
+	/// Set not to print debug info
+	wasmedge.SetLogErrorLevel()
 
-	bz, _ := json.Marshal(args)
-	h := hexutil.Encode(bz)
+	/// Create configure
+	var conf = wasmedge.NewConfigure(wasmedge.WASI)
 
-	input := ([]byte)(h)
-	w.Run(input)
-}
+	/// Create VM with configure
+	var vm = wasmedge.NewVMWithConfig(conf)
 
-// WASM is the ethereum virtual machine
-type WASM struct {
-	engine *wasmer.Engine
-	store  sdk.Storage
-}
-
-// NewEVM creates a new WASM
-func NewVM(s sdk.Storage) *WASM {
-	engine := wasmer.NewEngine()
-	return &WASM{store: s, engine: engine}
-}
-
-// Name implements the runtime interface
-func (e *WASM) Name() string {
-	return "wasm"
-}
-
-// Run implements the runtime interface
-func (e *WASM) Run(v hexutil.Bytes) hexutil.Bytes {
-
-	wasmBytes, _ := ioutil.ReadFile("/home/rogelio/Code/ancon-contracts/functions/testapp/target/wasm32-wasi/debug/testapp.wasm")
-
-	var args []int
-	hexbytes, err := hexutil.Decode((string)(v))
-
-	err = json.Unmarshal(hexbytes, &args)
-	if err != nil {
-		panic(err)
-	}
-
-	store := wasmer.NewStore(e.engine)
-
-	// Compiles the module
-	module, err := wasmer.NewModule(store, wasmBytes)
-
-	if err != nil {
-
-		panic(err)
-	}
-	wasiEnv, _ := wasmer.NewWasiStateBuilder("wasi-program").
-		// Choose according to your actual situation
-		// Argument("--foo").
-		// Environment("ABC", "DEF").
-		// MapDirectory("./", ".").
-		Finalize()
-	importObject, err := wasiEnv.GenerateImportObject(store, module)
-
-	if err != nil {
-		panic(err)
-	}
-	hostFunction := wasmer.NewFunction(
-		store,
-		wasmer.NewFunctionType(wasmer.NewValueTypes(), wasmer.NewValueTypes(wasmer.I32)),
-		func(args []wasmer.Value) ([]wasmer.Value, error) {
-			return []wasmer.Value{wasmer.NewI32(42)}, nil
-		},
-	)
-	// hostGlobal := wasmer.NewGlobal(
-	// 	store,
-	// 	wasmer.NewGlobalType(wasmer.NewValueType(wasmer.I32), wasmer.IMMUTABLE),
-	// 	wasmer.NewValue(nil, wasmer.AnyRef),
-
-	// )
-
-	importObject.Register(
-		"env",
-		map[string]wasmer.IntoExtern{
-			"focused_transform": hostFunction,
-		},
-	)
-	importObject.Register(
-		"go",
-		map[string]wasmer.IntoExtern{
-			"debug": hostFunction,
-		},
+	/// Init WASI
+	var wasi = wasmedge.NewWasiImportObject(
+		os.Args[1:],     /// The args
+		os.Environ(),    /// The envs
+		[]string{".:."}, /// The mapping preopens
 	)
 
-	instance, err := wasmer.NewInstance(module, importObject)
+	wasi.InitWasi(os.Args[1:], /// The args
+		os.Environ(),    /// The envs
+		[]string{".:."}, /// The mapping preopens
+	)
+	/// Instantiate wasm
+	file := "/home/rogelio/Code/ancon-contracts/functions/testapp/pkg/ancon_hybrid_contracts_lib_bg.wasm"
+	vm.LoadWasmFile(file)
 
-	if err != nil {
-		panic(err)
-	}
-	start, err := instance.Exports.GetWasiStartFunction()
+	vm.Validate()
+	vm.Instantiate()
 
-	if err != nil {
-		panic(err)
-	}
-	start()
-
-	main, err := instance.Exports.GetFunction("test")
-
-	if err != nil {
-		panic(err)
-	}
-	// Calls that exported function with Go standard values. The WebAssembly
-	// types are inferred and values are casted automatically.
-
-	s := hex.EncodeToString(hexbytes)
-	s = strings.Replace(s, "0x", "", 1)
-
-	w, err := strconv.Atoi(s)
-
-	result, err := main(w)
-
-	if err != nil {
-		panic(err)
-	}
-	hexvalue, _ := toHex(result)
-
-	// gasCost := vm.GasPolicy.GetCost()
-
-	// // In the case of not enough gas for precompiled execution we return ErrOutOfGas
-	// if c.Gas < gasCost {
-	// 	return &runtime.ExecutionResult{
-	// 		GasLeft: 0,
-	// 		Err:     runtime.ErrOutOfGas,
-	// 	}
+	/// Run bindgen functions
+	var res interface{}
+	var err error
+	// /// create_line: array, array, array -> array (inputs are JSON stringified)
+	// res, err = vm.ExecuteBindgen("create_line", wasmedge.Bindgen_return_array, []byte("{\"x\":1.5,\"y\":3.8}"), []byte("{\"x\":2.5,\"y\":5.8}"), []byte("A thin red line"))
+	// if err == nil {
+	// 	fmt.Println("Run bindgen -- create_line:", string(res.([]byte)))
+	// } else {
+	// 	fmt.Println("Run bindgen -- create_line FAILED")
 	// }
-
-	// c.Gas = c.Gas - gasCost
-
-	// result := &runtime.ExecutionResult{
-	// 	ReturnValue: returnValue,
-	// 	GasLeft:     c.Gas,
-	// 	Err:         err,
+	// /// say: array -> array
+	// res, err = vm.ExecuteBindgen("say", wasmedge.Bindgen_return_array, []byte("bindgen funcs test"))
+	// if err == nil {
+	// 	fmt.Println("Run bindgen -- say:", string(res.([]byte)))
+	// } else {
+	// 	fmt.Println("Run bindgen -- say FAILED")
 	// }
-
-	return hexvalue
-}
-
-func toHex(result interface{}) ([]byte, error) {
-	var hexresult hexutil.Bytes
-
-	hexresult, err := json.Marshal(result)
-
-	if err != nil {
-		return nil, err
+	// /// obfusticate: array -> array
+	// res, err = vm.ExecuteBindgen("obfusticate", wasmedge.Bindgen_return_array, []byte("A quick brown fox jumps over the lazy dog"))
+	// if err == nil {
+	// 	fmt.Println("Run bindgen -- obfusticate:", string(res.([]byte)))
+	// } else {
+	// 	fmt.Println("Run bindgen -- obfusticate FAILED")
+	// }
+	// /// lowest_common_multiple: i32, i32 -> i32
+	// res, err = vm.ExecuteBindgen("lowest_common_multiple", wasmedge.Bindgen_return_i32, int32(123), int32(2))
+	// if err == nil {
+	// 	fmt.Println("Run bindgen -- lowest_common_multiple:", res.(int32))
+	// } else {
+	// 	fmt.Println("Run bindgen -- lowest_common_multiple FAILED")
+	// }
+	// /// sha3_digest: array -> array
+	// res, err = vm.ExecuteBindgen("sha3_digest", wasmedge.Bindgen_return_array, []byte("This is an important message"))
+	// if err == nil {
+	// 	fmt.Println("Run bindgen -- sha3_digest:", res.([]byte))
+	// } else {
+	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
+	// }
+	/// keccak_digest: array -> array
+	res, err = vm.ExecuteBindgen("echo", wasmedge.Bindgen_return_array, []byte("This is an important message"))
+	if err == nil {
+		fmt.Println("Run bindgen -- echo:", string(res.([]byte)))
+	} else {
+		fmt.Println("Run bindgen -- echo FAILED")
 	}
 
-	hexvalue, err := hexresult.MarshalText()
-
-	if err != nil {
-		return nil, err
-	}
-	return hexvalue, nil
+	vm.Release()
+	conf.Release()
 }
