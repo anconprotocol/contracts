@@ -3,23 +3,6 @@
 version = 3
 
 [[package]]
-name = "ancon_hybrid_contracts"
-version = "0.1.0"
-dependencies = [
- "base64",
- "byteorder",
- "futures",
- "hex",
- "juniper",
- "rand",
- "serde",
- "serde-hex",
- "serde_json",
- "ssvm-wasi-helper",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "array-init"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -319,6 +302,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
+name = "js-sys"
+version = "0.3.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b823ebafcee1632403f2782d28728aab353f7881547a700043ef455c078326f"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "juniper"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -396,6 +388,25 @@ name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
+
+[[package]]
+name = "metadata"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "byteorder",
+ "futures",
+ "hex",
+ "js-sys",
+ "juniper",
+ "rand",
+ "serde",
+ "serde-hex",
+ "serde_json",
+ "ssvm-wasi-helper",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
 
 [[package]]
 name = "nodrop"
@@ -769,6 +780,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "736dcd8f8455458c82614f12116aabd0209d440c1a28d8824bcaed755ac3e058"
+dependencies = [
+ "cfg-if 0.1.10",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "wasm-bindgen-macro"
 version = "0.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -796,6 +819,16 @@ name = "wasm-bindgen-shared"
 version = "0.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71f77b681efd0bca6f8ea356cdc2e497538b41d3e2a02afed18ce8f022231d29"
+
+[[package]]
+name = "web-sys"
+version = "0.3.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07c5819dc39222a788ca169a81aef7d02739019256300534f493b5747d5469c2"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "winapi"

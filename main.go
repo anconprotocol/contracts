@@ -32,7 +32,7 @@ func main() {
 		[]string{".:."}, /// The mapping preopens
 	)
 	/// Instantiate wasm
-	file := "/home/rogelio/Code/ancon-contracts/functions/testapp/pkg/ancon_hybrid_contracts_lib_bg.wasm"
+	file := "/home/rogelio/Code/ancon-contracts/contracts/metadata/pkg/metadata_lib_bg.wasm"
 	vm.LoadWasmFile(file)
 
 	vm.Validate()
@@ -77,11 +77,11 @@ func main() {
 	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
 	// }
 	/// keccak_digest: array -> array
-	res, err = vm.ExecuteBindgen("echo", wasmedge.Bindgen_return_array, []byte("This is an important message"))
+	res, err = vm.ExecuteBindgen("hello", wasmedge.Bindgen_return_array, []byte("This is an important message"))
 	if err == nil {
-		fmt.Println("Run bindgen -- echo:", string(res.([]byte)))
+		fmt.Println("Run bindgen -- hello:", string(res.([]byte)))
 	} else {
-		fmt.Println("Run bindgen -- echo FAILED")
+		fmt.Println("Run bindgen -- hello FAILED")
 	}
 
 	vm.Release()

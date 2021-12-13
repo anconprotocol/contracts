@@ -9,11 +9,14 @@ fn main() {
     };
     use serde_hex::utils::fromhex;
     use std::convert::TryInto;
+//    use std::convert::From::from;
     use std::fmt::Display;
     use std::io::Cursor;
+    use std::future::*;
     use std::str;
+    use wasm_bindgen_futures::*;
     use wasm_bindgen::prelude::*;
-
+    use wasm_bindgen::convert::IntoWasmAbi;
     #[derive(Clone, Copy, Debug)]
     struct Context;
     impl juniper::Context for Context {}
@@ -96,44 +99,37 @@ fn main() {
     }
 
     #[wasm_bindgen]
-    pub extern "C" fn hello(input: &str) -> String {
+    pub fn hello(input: &str) -> (String) {
         let output = "hola mundo";
-        let res = to_hex(output.to_owned());
-        output.to_owned()
-    }
-
-    fn to_hex(s: String) -> i64 {
-        let bz = hex::encode(s);
-
-        let mut bz = Cursor::new(bz);
-        let res = bz.read_i64::<BigEndian>().unwrap_or_default();
+        let res = hex::encode(output.to_owned());
         res
     }
 
-    fn from_b64(v: i64) -> String {
-        let mut args = vec![];
-        args.write_i64::<BigEndian>(v.try_into().unwrap()).unwrap();
-        let res = hex::decode(args).unwrap_or_default();
-        String::from_utf8(res).unwrap()
+
+    #[wasm_bindgen]
+    pub async fn execute(query: String) -> js_sys::Promise {
+        // Create a context object.
+        let ctx = Context;
+
+        let m = EmptyMutation::new();
+        let s = EmptySubscription::new();
+
+        let v = Variables::new();
+
+        let sch = Schema::new(Query, m, s);
+        // Run the executor.
+        let res = juniper::execute(
+            &query, // "query { favoriteEpisode }",
+            None, &sch, &v, &ctx,
+        ).await;
+        let (data, err) = res.unwrap();
+
+        let x=data.to_string();
+        let promise = js_sys::Promise::resolve(&x.into());
+
+        // let result = wasm_bindgen_futures::JsFuture::from(promise).await?;
+        // Ok(result)
+        promise
+        // Ensure the value matches.
     }
-
-    // #[wasm_bindgen]
-    // pub fn execute(query: &str) -> JsFuture<Vec<String>> {
-    //     // Create a context object.
-    //     let ctx = Context;
-
-    //     let m = EmptyMutation::new();
-    //     let s = EmptySubscription::new();
-
-    //     let v = Variables::new();
-
-    //     let sch = Schema::new(Query, m, s);
-    //     // Run the executor.
-    //     let res = juniper::execute(
-    //         query, // "query { favoriteEpisode }",
-    //         None, &sch, &v, &ctx,
-    //     );
-    //     res
-    //     // Ensure the value matches.
-    // }
 }

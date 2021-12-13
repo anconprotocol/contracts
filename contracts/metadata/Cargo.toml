@@ -1,10 +1,10 @@
 [package]
-name = "ancon_hybrid_contracts"
+name = "metadata"
 version = "0.1.0"
 edition = "2018"
 
 [lib]
-name = "ancon_hybrid_contracts_lib"
+name = "metadata_lib"
 path = "src/lib.rs"
 crate-type =["cdylib"]
 
@@ -14,10 +14,11 @@ wasm-bindgen = "=0.2.61"
 ssvm-wasi-helper = "=0.1.0"
 juniper = "0.15.7"
 futures = "0.3"
-
+wasm-bindgen-futures = "=0.4.*"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 byteorder = "1.4.2"
 serde-hex = "0.1.0"
 base64 = "0.13.0"
 hex="0.4.3"
+js-sys = "0.3.*"
