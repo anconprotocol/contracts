@@ -1,135 +1,173 @@
-#![allow(unused)]
-fn main() {
-    use base64::*;
-    use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-    use hex::{FromHex, ToHex};
-    use juniper::{
-        graphql_object, EmptyMutation, EmptySubscription, FieldError, GraphQLEnum, RootNode,
-        Variables,
-    };
-    use serde_hex::utils::fromhex;
-    use std::convert::TryInto;
+extern crate juniper;
+
+#[macro_use]
+extern crate juniper_codegen;
+
+use base64::*;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use hex::{FromHex, ToHex};
+
+use juniper::{
+    graphql_object, EmptyMutation, EmptySubscription, FieldError, GraphQLEnum, GraphQLValue,
+    RootNode, Variables,
+};
+use std::collections::HashMap;
+
+use serde_hex::utils::fromhex;
+use std::convert::TryInto;
 //    use std::convert::From::from;
-    use std::fmt::Display;
-    use std::io::Cursor;
-    use std::future::*;
-    use std::str;
-    use wasm_bindgen_futures::*;
-    use wasm_bindgen::prelude::*;
-    use wasm_bindgen::convert::IntoWasmAbi;
-    #[derive(Clone, Copy, Debug)]
-    struct Context;
-    impl juniper::Context for Context {}
 
-    #[derive(Clone, Copy, Debug, GraphQLEnum)]
-    enum UserKind {
-        Admin,
-        User,
-        Guest,
+use std::str;
+
+struct Context {
+    metadata: HashMap<String, Ancon721Metadata>,
+}
+
+impl juniper::Context for Context {}
+
+#[derive(GraphQLObject, Clone, Debug)]
+struct DagLink {
+    path: String,
+    cid: String,
+}
+
+#[derive(Clone, Debug)]
+struct Ancon721Metadata {
+    name: String,
+    description: String,
+    image: String,
+    parent: String,
+    owner: String,
+    sources: Vec<String>,
+}
+
+#[graphql_object(context = Context)]
+impl Ancon721Metadata {
+    fn name(&self) -> &str {
+        &self.name
     }
 
-    #[derive(Clone, Debug)]
-    struct User {
-        id: i32,
-        kind: UserKind,
-        name: String,
+    fn description(&self) -> &str {
+        &self.description
     }
 
-    #[graphql_object(context = Context)]
-    impl User {
-        fn id(&self) -> i32 {
-            self.id
-        }
-
-        fn kind(&self) -> UserKind {
-            self.kind
-        }
-
-        fn name(&self) -> &str {
-            &self.name
-        }
-
-        async fn friends(&self) -> Vec<User> {
-            vec![]
-        }
+    fn image(&self) -> &str {
+        &self.image
+    }
+    fn parent(&self) -> &str {
+        &self.parent
     }
 
-    #[derive(Clone, Copy, Debug)]
-    struct Query;
-
-    #[graphql_object(context = Context)]
-    impl Query {
-        async fn users() -> Vec<User> {
-            vec![User {
-                id: 1,
-                kind: UserKind::Admin,
-                name: "user1".into(),
-            }]
-        }
-
-        // /// Fetch a URL and return the response body text.
-        // async fn request(url: String) -> Result<String, FieldError> {
-        //     Ok(reqwest::get(&url).await?.text().await?)
-        // }
+    fn owner(&self) -> &str {
+        &self.parent
     }
 
-    type Schema = RootNode<'static, Query, EmptyMutation<Context>, EmptySubscription<Context>>;
-
-    fn schema() -> Schema {
-        Schema::new(
-            Query,
-            EmptyMutation::<Context>::new(),
-            EmptySubscription::<Context>::new(),
-        )
-    }
-    fn main() {}
-
-    #[wasm_bindgen]
-    extern "C" {
-        #[wasm_bindgen]
-        pub fn response(s: &str) -> String;
-        #[wasm_bindgen]
-        pub fn args() -> String;
-    }
-
-    #[wasm_bindgen]
-    pub fn echo(content: &str) -> String {
-        println!("Printed from wasi: {}", content);
-        return content.to_string();
-    }
-
-    #[wasm_bindgen]
-    pub fn hello(input: &str) -> (String) {
-        let output = "hola mundo";
-        let res = hex::encode(output.to_owned());
-        res
+    async fn sources(&self) -> Vec<String> {
+        vec![]
     }
 
 
-    #[wasm_bindgen]
-    pub async fn execute(query: String) -> js_sys::Promise {
-        // Create a context object.
-        let ctx = Context;
+}
+#[derive(Clone, Debug)]
+struct DagContractTrusted {
+    data: DagLink,
+    payload: Ancon721Metadata,
+}
 
-        let m = EmptyMutation::new();
-        let s = EmptySubscription::new();
+// pub struct Subscription;
 
-        let v = Variables::new();
+// type StringStream = Pin<Box<dyn Stream<Item = Result<String, FieldError>> + Send>>;
 
-        let sch = Schema::new(Query, m, s);
-        // Run the executor.
-        let res = juniper::execute(
-            &query, // "query { favoriteEpisode }",
-            None, &sch, &v, &ctx,
-        ).await;
-        let (data, err) = res.unwrap();
+// #[graphql_subscription(context = Database)]
+// impl Subscription {
+//     async fn hello_world() -> StringStream {
+//         let stream =
+//             futures::stream::iter(vec![Ok(String::from("Hello")), Ok(String::from("World!"))]);
+//         Box::pin(stream)
+//     }
+// }
+#[derive(Clone, Copy, Debug)]
+struct Query;
 
-        let x=data.to_string();
-        let promise = js_sys::Promise::resolve(&x.into());
+#[graphql_object(context = Context)]
+impl Query {
+    async fn metadata(cid: String, path: String) -> Vec<Ancon721Metadata> {
+      //  let metadata = host::read_dag_block(cid, path);
 
-        // let result = wasm_bindgen_futures::JsFuture::from(promise).await?;
-        // Ok(result)
-        promise
-        // Ensure the value matches.
+        vec![Ancon721Metadata {
+            name: "test".to_string(),
+            description: "description".to_string(),
+            image: "http://ipfs.io/ipfs/".to_string(),
+            owner: "".to_string(),
+            parent: "".to_string(),
+            sources: [].to_vec(),
+        }]
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+struct Mutation;
+
+#[graphql_object(context = Context)]
+impl Mutation {
+    async fn metadata(cid: String, path: String) -> Vec<Ancon721Metadata> {
+        vec![Ancon721Metadata {
+            name: "test".to_string(),
+            description: "description".to_string(),
+            image: "http://ipfs.io/ipfs/".to_string(),
+            owner: "".to_string(),
+            parent: "".to_string(),
+            sources: [].to_vec(),
+        }]
+    }
+
+    // /// Fetch a URL and return the response body text.
+    // async fn request(url: String) -> Result<String, FieldError> {
+    //     Ok(reqwest::get(&url).await?.text().await?)
+    // }
+}
+
+// #[derive(Clone, Debug)]
+// struct MetadataTransactionInput {
+//   path: String,
+//   cid: String,
+//   owner: String,
+//   newOwner: String,
+// }
+
+// #[derive(Clone, Debug)]
+// struct Transaction {
+//   metadata(tx: MetadataTransactionInput)-> DagLink{}
+// }
+type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
+
+fn schema() -> Schema {
+    Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
+}
+
+pub async fn execute(query: String) -> js_sys::Promise {
+    // Create a context object.
+    let ctx = Context { metadata: HashMap::default() };
+
+    let s = EmptySubscription::new();
+    let v = Variables::new();
+
+    let sch = Schema::new(Query, Mutation, s);
+    // Run the executor.
+    let res = juniper::execute(
+        &query, // "query { favoriteEpisode }",
+        None, &sch, &v, &ctx,
+    )
+    .await;
+    let (data, err) = res.unwrap();
+
+    let x = data.to_string();
+    let promise = js_sys::Promise::resolve(&x.into());
+
+    // let result = wasm_bindgen_futures::JsFuture::from(promise).await?;
+    // Ok(result)
+    promise
+    // Ensure the value matches.
+}
+
+fn main() {}

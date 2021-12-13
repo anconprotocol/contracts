@@ -399,6 +399,7 @@ dependencies = [
  "hex",
  "js-sys",
  "juniper",
+ "juniper_codegen",
  "rand",
  "serde",
  "serde-hex",
