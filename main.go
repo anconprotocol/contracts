@@ -4,14 +4,22 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/anconprotocol/contracts/wasmvm"
+	"github.com/anconprotocol/sdk"
+	"github.com/anconprotocol/sdk/proofsignature"
 	"github.com/second-state/WasmEdge-go/wasmedge"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func main() {
-	/// Expected Args[0]: program name (./bindgen_funcs)
-	/// Expected Args[1]: wasm or wasm-so file (rust_bindgen_funcs_lib_bg.wasm))
 
-	/// Set not to print debug info
+	dataFolder := ".ancon"
+	anconstorage := sdk.NewStorage(dataFolder)
+	db := dbm.NewMemDB()
+
+	proofs, _ := proofsignature.NewIavlAPI(anconstorage, nil, db, 2000, 0)
+
+	host := wasmvm.NewHost(anconstorage, proofs)
 	wasmedge.SetLogErrorLevel()
 
 	/// Create configure
@@ -19,7 +27,6 @@ func main() {
 
 	/// Create VM with configure
 	var vm = wasmedge.NewVMWithConfig(conf)
-
 
 	/// Init WASI
 	var wasi = vm.GetImportObject(wasmedge.WASI)
@@ -32,15 +39,38 @@ func main() {
 	/// Instantiate wasm
 	file := "/home/rogelio/Code/ancon-contracts/contracts/metadata/pkg/metadata_lib_bg.wasm"
 	vm.LoadWasmFile(file)
+
+	var type1 = wasmedge.NewFunctionType(
+		[]wasmedge.ValType{
+			wasmedge.ValType_V128,
+		}, []wasmedge.ValType{
+			wasmedge.ValType_V128,
+		})
+	var type2 = wasmedge.NewFunctionType(
+		[]wasmedge.ValType{
+			wasmedge.ValType_V128,
+			wasmedge.ValType_V128,
+		}, []wasmedge.ValType{
+			wasmedge.ValType_V128,
+		})
+	fn1 := wasmedge.NewFunction(type2, host.WriteStore, nil, 0)
+	wasi.AddFunction("write_store", fn1)
+
+	fn2 := wasmedge.NewFunction(type1, host.ReadStore, nil, 0)
+	wasi.AddFunction("read_store", fn2)
+
+	fn3 := wasmedge.NewFunction(type2, host.ReadDagBlock, nil, 0)
+	wasi.AddFunction("read_dag_block", fn3)
+
+	fn4 := wasmedge.NewFunction(type1, host.WriteDagBlock, nil, 0)
+	wasi.AddFunction("write_dag_block", fn4)
+ 
 	vm.Validate()
 	vm.Instantiate()
-	// f , e:= vm.GetFunctionList()
-	// fmt.Println("%v", f)
-	// fmt.Println("%v", e)
-	// fn1 := wasmedge.NewFunction(vm.GetFunctionType("write_store"),host_add,nil,444444)
-	// wasi.AddFunction("write_store",fn1)
 
-	/// Run bindgen functions
+	f, e := vm.GetFunctionList()
+	fmt.Println("%v", f)
+	fmt.Println("%v", e)	/// Run bindgen functions
 	var res interface{}
 	var err error
 	// /// create_line: array, array, array -> array (inputs are JSON stringified)
@@ -88,36 +118,5 @@ func main() {
 
 	vm.Release()
 
-
 	conf.Release()
 }
-
-// Host functions
-func host_add(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
-	/// add: externref, i32, i32 -> i32
-	/// call the real add function in externref
-	fmt.Println("Go: Entering go host function host_add")
-
-	/// Get the externref
-	externref := params[0].(wasmedge.ExternRef)
-
-	/// Get the interface{} from externref
-	realref := externref.GetRef()
-
-	/// Cast to the functionp
-	realfunc := realref.(func(int32, int32) int32)
-
-	/// Call function
-	res := realfunc(params[1].(int32), params[2].(int32))
-
-	/// Set the returns
-	returns := make([]interface{}, 1)
-	returns[0] = res
-
-	/// Return
-	fmt.Println("Go: Leaving go host function host_add")
-	return returns, wasmedge.Result_Success
-}
-
-
-

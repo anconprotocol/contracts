@@ -1,3 +1,4 @@
+
 extern crate juniper;
 
 #[macro_use]
@@ -98,7 +99,7 @@ impl Query {
         "0.1"
     }
     fn metadata(context: &Context,cid: String, path: String) -> Ancon721Metadata {
-        //        let metadata = read_dag_block(cid, path);
+               let metadata = read_dag_block(cid, path);
 
        Ancon721Metadata {
             name: "test".to_string(),
@@ -181,18 +182,15 @@ pub fn execute(query: &str) -> String {
 }
 
 #[wasm_bindgen]
-pub fn say(s: &str) -> String {
-  let r = String::from("hello ");
-  return r + s;
-}
+extern  {
+    #[wasm_bindgen]
+    pub fn write_store(key: String, value: String);
 
-#[wasm_bindgen]
-pub fn hello(s: String) -> String {
-  (&s).chars().map(|c| {
-    match c {
-      'A' ..= 'M' | 'a' ..= 'm' => ((c as u8) + 13) as char,
-      'N' ..= 'Z' | 'n' ..= 'z' => ((c as u8) - 13) as char,
-      _ => c
-    }
-  }).collect()
+    #[wasm_bindgen]
+    pub fn read_store(key: String) -> String;
+
+    #[wasm_bindgen]
+    pub fn write_dag_block(data: String) -> String;
+
+    pub fn read_dag_block(cid: String, path: String) -> String; 
 }
