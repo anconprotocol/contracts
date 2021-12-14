@@ -93,17 +93,21 @@ struct Query;
 
 #[graphql_object(context = Context)]
 impl Query {
-    async fn metadata(cid: String, path: String) -> Vec<Ancon721Metadata> {
+    
+    fn api_version() -> &'static str {
+        "0.1"
+    }
+    fn metadata(context: &Context,cid: String, path: String) -> Ancon721Metadata {
         //        let metadata = read_dag_block(cid, path);
 
-        vec![Ancon721Metadata {
+       Ancon721Metadata {
             name: "test".to_string(),
             description: "description".to_string(),
             image: "http://ipfs.io/ipfs/".to_string(),
             owner: "".to_string(),
             parent: "".to_string(),
             sources: [].to_vec(),
-        }]
+        }
     }
 }
 
@@ -145,6 +149,35 @@ type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
 
 fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
+}
+
+
+
+#[wasm_bindgen()]
+pub fn execute(query: &str) -> String {
+    // Create a context object.
+    let ctx = Context {
+        metadata: HashMap::default(),
+    };
+
+    let v = Variables::new();
+
+    let sch = schema();
+
+    let res = juniper::execute_sync(
+        query, // "query { favoriteEpisode }",
+        None, &sch, &v, &ctx,
+    );
+    let (data, err) = res.unwrap();
+    let errors = err
+        .iter()
+        .map(|i| i.error().message().to_string())
+        .collect::<Vec<String>>();
+
+    json!({
+        "data":data.to_string(),
+        "errors": errors,
+    }).to_string()
 }
 
 #[wasm_bindgen]

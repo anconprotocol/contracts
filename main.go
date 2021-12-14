@@ -79,7 +79,7 @@ func main() {
 	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
 	// }
 	/// keccak_digest: array -> array
-	res, err = vm.ExecuteBindgen("query", wasmedge.Bindgen_return_array, []byte("query { metadata()}"))
+	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(`query { metadata(cid:"",path:"")  {image}}`))
 	if err == nil {
 		fmt.Println("Run bindgen -- query:", string(res.([]byte)))
 	} else {
