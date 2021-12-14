@@ -6,18 +6,24 @@ extern crate juniper_codegen;
 use base64::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use hex::{FromHex, ToHex};
-
 use juniper::{
     graphql_object, EmptyMutation, EmptySubscription, FieldError, GraphQLEnum, GraphQLValue,
     RootNode, Variables,
 };
+use serde_json::json;
 use std::collections::HashMap;
 
 use serde_hex::utils::fromhex;
 use std::convert::TryInto;
 //    use std::convert::From::from;
-
+use std::fmt::Display;
+use std::future::*;
+use std::io::Cursor;
 use std::str;
+use std::vec::*;
+use wasm_bindgen::convert::IntoWasmAbi;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::*;
 
 struct Context {
     metadata: HashMap<String, Ancon721Metadata>,
@@ -65,8 +71,6 @@ impl Ancon721Metadata {
     async fn sources(&self) -> Vec<String> {
         vec![]
     }
-
-
 }
 #[derive(Clone, Debug)]
 struct DagContractTrusted {
@@ -92,7 +96,7 @@ struct Query;
 #[graphql_object(context = Context)]
 impl Query {
     async fn metadata(cid: String, path: String) -> Vec<Ancon721Metadata> {
-      //  let metadata = host::read_dag_block(cid, path);
+        let metadata = read_dag_block(cid, path);
 
         vec![Ancon721Metadata {
             name: "test".to_string(),
@@ -127,7 +131,7 @@ impl Mutation {
     // }
 }
 
-// #[derive(Clone, Debug)]
+// #[derive(Clone, 000000Debug)]
 // struct MetadataTransactionInput {
 //   path: String,
 //   cid: String,
@@ -137,7 +141,7 @@ impl Mutation {
 
 // #[derive(Clone, Debug)]
 // struct Transaction {
-//   metadata(tx: MetadataTransactionInput)-> DagLink{}
+//   metadata(tx: MetadataTransactionInput)-> JDagLink{}
 // }
 type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
 
@@ -145,29 +149,44 @@ fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
 }
 
-pub async fn execute(query: String) -> js_sys::Promise {
+#[wasm_bindgen()]
+pub fn execute(query: String) -> String {
     // Create a context object.
-    let ctx = Context { metadata: HashMap::default() };
+    let ctx = Context {
+        metadata: HashMap::default(),
+    };
 
-    let s = EmptySubscription::new();
     let v = Variables::new();
 
-    let sch = Schema::new(Query, Mutation, s);
-    // Run the executor.
-    let res = juniper::execute(
+    let sch = schema();
+
+    let res = juniper::execute_sync(
         &query, // "query { favoriteEpisode }",
         None, &sch, &v, &ctx,
-    )
-    .await;
+    );
     let (data, err) = res.unwrap();
+    let errors = err
+        .iter()
+        .map(|i| i.error().message().to_string())
+        .collect::<Vec<String>>();
 
-    let x = data.to_string();
-    let promise = js_sys::Promise::resolve(&x.into());
-
-    // let result = wasm_bindgen_futures::JsFuture::from(promise).await?;
-    // Ok(result)
-    promise
-    // Ensure the value matches.
+    json!({
+        "data":data.to_string(),
+        "errors": errors,
+    }).to_string()
 }
 
-fn main() {}
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen]
+    pub fn write_store(key: String, value: String);
+
+    #[wasm_bindgen]
+    pub fn read_store(key: String) -> String;
+
+    #[wasm_bindgen]
+    pub fn write_dag_block(data: String) -> String;
+
+    #[wasm_bindgen]
+    pub fn read_dag_block(cid: String, path: String) -> String;
+}
