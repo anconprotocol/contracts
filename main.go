@@ -20,23 +20,25 @@ func main() {
 	/// Create VM with configure
 	var vm = wasmedge.NewVMWithConfig(conf)
 
+
 	/// Init WASI
-	var wasi = wasmedge.NewWasiImportObject(
+	var wasi = vm.GetImportObject(wasmedge.WASI)
+	wasi.InitWasi(
 		os.Args[1:],     /// The args
 		os.Environ(),    /// The envs
 		[]string{".:."}, /// The mapping preopens
 	)
 
-	wasi.InitWasi(os.Args[1:], /// The args
-		os.Environ(),    /// The envs
-		[]string{".:."}, /// The mapping preopens
-	)
 	/// Instantiate wasm
 	file := "/home/rogelio/Code/ancon-contracts/contracts/metadata/pkg/metadata_lib_bg.wasm"
 	vm.LoadWasmFile(file)
-
 	vm.Validate()
 	vm.Instantiate()
+	// f , e:= vm.GetFunctionList()
+	// fmt.Println("%v", f)
+	// fmt.Println("%v", e)
+	// fn1 := wasmedge.NewFunction(vm.GetFunctionType("write_store"),host_add,nil,444444)
+	// wasi.AddFunction("write_store",fn1)
 
 	/// Run bindgen functions
 	var res interface{}
@@ -77,13 +79,45 @@ func main() {
 	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
 	// }
 	/// keccak_digest: array -> array
-	res, err = vm.ExecuteBindgen("hello", wasmedge.Bindgen_return_array, []byte("This is an important message"))
+	res, err = vm.ExecuteBindgen("query", wasmedge.Bindgen_return_array, []byte("query { metadata()}"))
 	if err == nil {
-		fmt.Println("Run bindgen -- hello:", string(res.([]byte)))
+		fmt.Println("Run bindgen -- query:", string(res.([]byte)))
 	} else {
-		fmt.Println("Run bindgen -- hello FAILED")
+		fmt.Println("Run bindgen -- query FAILED")
 	}
 
 	vm.Release()
+
+
 	conf.Release()
 }
+
+// Host functions
+func host_add(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
+	/// add: externref, i32, i32 -> i32
+	/// call the real add function in externref
+	fmt.Println("Go: Entering go host function host_add")
+
+	/// Get the externref
+	externref := params[0].(wasmedge.ExternRef)
+
+	/// Get the interface{} from externref
+	realref := externref.GetRef()
+
+	/// Cast to the functionp
+	realfunc := realref.(func(int32, int32) int32)
+
+	/// Call function
+	res := realfunc(params[1].(int32), params[2].(int32))
+
+	/// Set the returns
+	returns := make([]interface{}, 1)
+	returns[0] = res
+
+	/// Return
+	fmt.Println("Go: Leaving go host function host_add")
+	return returns, wasmedge.Result_Success
+}
+
+
+

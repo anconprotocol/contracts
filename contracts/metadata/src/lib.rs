@@ -21,9 +21,7 @@ use std::future::*;
 use std::io::Cursor;
 use std::str;
 use std::vec::*;
-use wasm_bindgen::convert::IntoWasmAbi;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::*;
 
 struct Context {
     metadata: HashMap<String, Ancon721Metadata>,
@@ -96,7 +94,7 @@ struct Query;
 #[graphql_object(context = Context)]
 impl Query {
     async fn metadata(cid: String, path: String) -> Vec<Ancon721Metadata> {
-        let metadata = read_dag_block(cid, path);
+        //        let metadata = read_dag_block(cid, path);
 
         vec![Ancon721Metadata {
             name: "test".to_string(),
@@ -149,44 +147,19 @@ fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
 }
 
-#[wasm_bindgen()]
-pub fn execute(query: String) -> String {
-    // Create a context object.
-    let ctx = Context {
-        metadata: HashMap::default(),
-    };
-
-    let v = Variables::new();
-
-    let sch = schema();
-
-    let res = juniper::execute_sync(
-        &query, // "query { favoriteEpisode }",
-        None, &sch, &v, &ctx,
-    );
-    let (data, err) = res.unwrap();
-    let errors = err
-        .iter()
-        .map(|i| i.error().message().to_string())
-        .collect::<Vec<String>>();
-
-    json!({
-        "data":data.to_string(),
-        "errors": errors,
-    }).to_string()
+#[wasm_bindgen]
+pub fn say(s: &str) -> String {
+  let r = String::from("hello ");
+  return r + s;
 }
 
 #[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen]
-    pub fn write_store(key: String, value: String);
-
-    #[wasm_bindgen]
-    pub fn read_store(key: String) -> String;
-
-    #[wasm_bindgen]
-    pub fn write_dag_block(data: String) -> String;
-
-    #[wasm_bindgen]
-    pub fn read_dag_block(cid: String, path: String) -> String;
+pub fn hello(s: String) -> String {
+  (&s).chars().map(|c| {
+    match c {
+      'A' ..= 'M' | 'a' ..= 'm' => ((c as u8) + 13) as char,
+      'N' ..= 'Z' | 'n' ..= 'z' => ((c as u8) - 13) as char,
+      _ => c
+    }
+  }).collect()
 }
