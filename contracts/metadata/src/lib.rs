@@ -1,9 +1,10 @@
+use ssvm_wasi_helper::ssvm_wasi_helper::_initialize;
 
 extern crate juniper;
 
 #[macro_use]
 extern crate juniper_codegen;
-
+use std::env;
 use base64::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use hex::{FromHex, ToHex};
@@ -98,8 +99,11 @@ impl Query {
     fn api_version() -> &'static str {
         "0.1"
     }
+
     fn metadata(context: &Context,cid: String, path: String) -> Ancon721Metadata {
-               let metadata = read_dag_block(cid, path);
+
+        
+unsafe {let metadata = read_dag_block(&cid, &path);}
 
        Ancon721Metadata {
             name: "test".to_string(),
@@ -180,17 +184,16 @@ pub fn execute(query: &str) -> String {
         "errors": errors,
     }).to_string()
 }
-
-#[wasm_bindgen]
-extern  {
-    #[wasm_bindgen]
+extern    {
+   // #[no_mangle]
     pub fn write_store(key: String, value: String);
 
-    #[wasm_bindgen]
+   // #[no_mangle]
     pub fn read_store(key: String) -> String;
 
-    #[wasm_bindgen]
-    pub fn write_dag_block(data: String) -> String;
+  //  #[no_mangle]
+  pub fn write_dag_block(data: String) -> String;
 
-    pub fn read_dag_block(cid: String, path: String) -> String; 
+    #[no_mangle]
+    pub fn read_dag_block(cid: &str, path: &str) -> String; 
 }

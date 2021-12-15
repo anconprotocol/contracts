@@ -36,41 +36,55 @@ func main() {
 		[]string{".:."}, /// The mapping preopens
 	)
 
+
+	// a := wasmedge.NewImportObject("ancon")
 	/// Instantiate wasm
 	file := "/home/rogelio/Code/ancon-contracts/contracts/metadata/pkg/metadata_lib_bg.wasm"
 	vm.LoadWasmFile(file)
 
 	var type1 = wasmedge.NewFunctionType(
 		[]wasmedge.ValType{
-			wasmedge.ValType_V128,
+
+			
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
 		}, []wasmedge.ValType{
-			wasmedge.ValType_V128,
+			wasmedge.ValType_I32,
 		})
 	var type2 = wasmedge.NewFunctionType(
 		[]wasmedge.ValType{
-			wasmedge.ValType_V128,
-			wasmedge.ValType_V128,
+
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			
 		}, []wasmedge.ValType{
-			wasmedge.ValType_V128,
+	//		wasmedge.ValType_I32,
 		})
+	n := wasmedge.NewImportObject("env")
 	fn1 := wasmedge.NewFunction(type2, host.WriteStore, nil, 0)
-	wasi.AddFunction("write_store", fn1)
+	n.AddFunction("write_store", fn1)
 
 	fn2 := wasmedge.NewFunction(type1, host.ReadStore, nil, 0)
-	wasi.AddFunction("read_store", fn2)
+	n.AddFunction("read_store", fn2)
 
 	fn3 := wasmedge.NewFunction(type2, host.ReadDagBlock, nil, 0)
-	wasi.AddFunction("read_dag_block", fn3)
+	n.AddFunction("read_dag_block", fn3)
+	
 
 	fn4 := wasmedge.NewFunction(type1, host.WriteDagBlock, nil, 0)
-	wasi.AddFunction("write_dag_block", fn4)
- 
+	n.AddFunction("write_dag_block", fn4)
+	vm.RegisterImport(n)
+	// wasi.InitWasi(
+
 	vm.Validate()
 	vm.Instantiate()
 
 	f, e := vm.GetFunctionList()
 	fmt.Println("%v", f)
-	fmt.Println("%v", e)	/// Run bindgen functions
+	fmt.Println("%v", e) /// Run bindgen functions
 	var res interface{}
 	var err error
 	// /// create_line: array, array, array -> array (inputs are JSON stringified)
@@ -109,7 +123,7 @@ func main() {
 	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
 	// }
 	/// keccak_digest: array -> array
-	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(`query { metadata(cid:"",path:"")  {image}}`))
+	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(`query { metadata(cid:"babfy",path:"/")  {image}}`))
 	if err == nil {
 		fmt.Println("Run bindgen -- query:", string(res.([]byte)))
 	} else {
