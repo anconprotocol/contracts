@@ -13,6 +13,7 @@ import (
 
 func main() {
 
+
 	dataFolder := ".ancon"
 	anconstorage := sdk.NewStorage(dataFolder)
 	db := dbm.NewMemDB()
@@ -36,98 +37,34 @@ func main() {
 		[]string{".:."}, /// The mapping preopens
 	)
 
-
 	// a := wasmedge.NewImportObject("ancon")
 	/// Instantiate wasm
 	file := "/home/rogelio/Code/ancon-contracts/contracts/metadata/pkg/metadata_lib_bg.wasm"
 	vm.LoadWasmFile(file)
-
-	var type1 = wasmedge.NewFunctionType(
-		[]wasmedge.ValType{
-
-			
-			wasmedge.ValType_I32,
-			wasmedge.ValType_I32,
-		}, []wasmedge.ValType{
-			wasmedge.ValType_I32,
-		})
-	var type2 = wasmedge.NewFunctionType(
-		[]wasmedge.ValType{
-
-			wasmedge.ValType_I32,
-			wasmedge.ValType_I32,
-			wasmedge.ValType_I32,
-			wasmedge.ValType_I32,
-			wasmedge.ValType_I32,
-			
-		}, []wasmedge.ValType{
-	//		wasmedge.ValType_I32,
-		})
-	n := wasmedge.NewImportObject("env")
-	fn1 := wasmedge.NewFunction(type2, host.WriteStore, nil, 0)
-	n.AddFunction("write_store", fn1)
-
-	fn2 := wasmedge.NewFunction(type1, host.ReadStore, nil, 0)
-	n.AddFunction("read_store", fn2)
-
-	fn3 := wasmedge.NewFunction(type2, host.ReadDagBlock, nil, 0)
-	n.AddFunction("read_dag_block", fn3)
-	
-
-	fn4 := wasmedge.NewFunction(type1, host.WriteDagBlock, nil, 0)
-	n.AddFunction("write_dag_block", fn4)
-	vm.RegisterImport(n)
+	vm.RegisterImport(host.GetImports())
 	// wasi.InitWasi(
 
 	vm.Validate()
 	vm.Instantiate()
-
-	f, e := vm.GetFunctionList()
-	fmt.Println("%v", f)
-	fmt.Println("%v", e) /// Run bindgen functions
 	var res interface{}
 	var err error
-	// /// create_line: array, array, array -> array (inputs are JSON stringified)
-	// res, err = vm.ExecuteBindgen("create_line", wasmedge.Bindgen_return_array, []byte("{\"x\":1.5,\"y\":3.8}"), []byte("{\"x\":2.5,\"y\":5.8}"), []byte("A thin red line"))
-	// if err == nil {
-	// 	fmt.Println("Run bindgen -- create_line:", string(res.([]byte)))
-	// } else {
-	// 	fmt.Println("Run bindgen -- create_line FAILED")
-	// }
-	// /// say: array -> array
-	// res, err = vm.ExecuteBindgen("say", wasmedge.Bindgen_return_array, []byte("bindgen funcs test"))
-	// if err == nil {
-	// 	fmt.Println("Run bindgen -- say:", string(res.([]byte)))
-	// } else {
-	// 	fmt.Println("Run bindgen -- say FAILED")
-	// }
-	// /// obfusticate: array -> array
-	// res, err = vm.ExecuteBindgen("obfusticate", wasmedge.Bindgen_return_array, []byte("A quick brown fox jumps over the lazy dog"))
-	// if err == nil {
-	// 	fmt.Println("Run bindgen -- obfusticate:", string(res.([]byte)))
-	// } else {
-	// 	fmt.Println("Run bindgen -- obfusticate FAILED")
-	// }
-	// /// lowest_common_multiple: i32, i32 -> i32
-	// res, err = vm.ExecuteBindgen("lowest_common_multiple", wasmedge.Bindgen_return_i32, int32(123), int32(2))
-	// if err == nil {
-	// 	fmt.Println("Run bindgen -- lowest_common_multiple:", res.(int32))
-	// } else {
-	// 	fmt.Println("Run bindgen -- lowest_common_multiple FAILED")
-	// }
-	// /// sha3_digest: array -> array
-	// res, err = vm.ExecuteBindgen("sha3_digest", wasmedge.Bindgen_return_array, []byte("This is an important message"))
-	// if err == nil {
-	// 	fmt.Println("Run bindgen -- sha3_digest:", res.([]byte))
-	// } else {
-	// 	fmt.Println("Run bindgen -- sha3_digest FAILED")
-	// }
-	/// keccak_digest: array -> array
-	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(`query { metadata(cid:"babfy",path:"/")  {image}}`))
+
+
+	payload := []byte(`{ "name":"" , "image":"", "description":""}`)
+	res, err = vm.ExecuteBindgen("store", wasmedge.Bindgen_return_array, payload)
 	if err == nil {
-		fmt.Println("Run bindgen -- query:", string(res.([]byte)))
+		fmt.Println("Run bindgen -- store:", string(res.([]byte)))
 	} else {
-		fmt.Println("Run bindgen -- query FAILED")
+		fmt.Println("Run bindgen -- store FAILED")
+	}
+
+
+	q := []byte(`query { metadata(cid:"babfy",path:"/")  {image}}`)
+		res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, q)
+	if err == nil {
+		fmt.Println("Run bindgen -- execute:", string(res.([]byte)))
+	} else {
+		fmt.Println("Run bindgen -- execute FAILED")
 	}
 
 	vm.Release()

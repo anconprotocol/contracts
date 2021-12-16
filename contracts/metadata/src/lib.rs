@@ -1,10 +1,9 @@
-use ssvm_wasi_helper::ssvm_wasi_helper::_initialize;
-
+use sdk::*;
+mod sdk;
 extern crate juniper;
 
 #[macro_use]
 extern crate juniper_codegen;
-use std::env;
 use base64::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use hex::{FromHex, ToHex};
@@ -12,15 +11,12 @@ use juniper::{
     graphql_object, EmptyMutation, EmptySubscription, FieldError, GraphQLEnum, GraphQLValue,
     RootNode, Variables,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
 
-use serde_hex::utils::fromhex;
-use std::convert::TryInto;
-//    use std::convert::From::from;
-use std::fmt::Display;
-use std::future::*;
-use std::io::Cursor;
+use std::collections::HashMap;
+use std::env;
+
 use std::str;
 use std::vec::*;
 use wasm_bindgen::prelude::*;
@@ -31,13 +27,13 @@ struct Context {
 
 impl juniper::Context for Context {}
 
-#[derive(GraphQLObject, Clone, Debug)]
+#[derive(GraphQLObject, Clone, Debug, Serialize, Deserialize)]
 struct DagLink {
     path: String,
     cid: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Ancon721Metadata {
     name: String,
     description: String,
@@ -72,7 +68,7 @@ impl Ancon721Metadata {
         vec![]
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct DagContractTrusted {
     data: DagLink,
     payload: Ancon721Metadata,
@@ -95,23 +91,15 @@ struct Query;
 
 #[graphql_object(context = Context)]
 impl Query {
-    
     fn api_version() -> &'static str {
         "0.1"
     }
 
-    fn metadata(context: &Context,cid: String, path: String) -> Ancon721Metadata {
-
-        
-unsafe {let metadata = read_dag_block(&cid, &path);}
-
-       Ancon721Metadata {
-            name: "test".to_string(),
-            description: "description".to_string(),
-            image: "http://ipfs.io/ipfs/".to_string(),
-            owner: "".to_string(),
-            parent: "".to_string(),
-            sources: [].to_vec(),
+    fn metadata(context: &Context, cid: String, path: String) -> Ancon721Metadata {
+        unsafe {
+            let metadata = read_dag_block(&cid, &path);
+            let res = serde_json::from_slice(&metadata);
+            res.unwrap()
         }
     }
 }
@@ -156,8 +144,6 @@ fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
 }
 
-
-
 #[wasm_bindgen()]
 pub fn execute(query: &str) -> String {
     // Create a context object.
@@ -182,18 +168,22 @@ pub fn execute(query: &str) -> String {
     json!({
         "data":data.to_string(),
         "errors": errors,
-    }).to_string()
+    })
+    .to_string()
 }
-extern    {
-   // #[no_mangle]
-    pub fn write_store(key: String, value: String);
 
-   // #[no_mangle]
-    pub fn read_store(key: String) -> String;
+#[wasm_bindgen]
+pub fn store(data: &str) -> Vec<u8> {
+    let payload = Ancon721Metadata {
+        name: "test".to_string(),
+        description: "description".to_string(),
+        image: "http://ipfs.io/ipfs/".to_string(),
+        owner: "".to_string(),
+        parent: "".to_string(),
+        sources: [].to_vec(),
+    };
 
-  //  #[no_mangle]
-  pub fn write_dag_block(data: String) -> String;
+    let json_payload = serde_json::to_string_pretty(&payload).unwrap();
 
-    #[no_mangle]
-    pub fn read_dag_block(cid: &str, path: &str) -> String; 
+    unsafe { write_dag_block(&json_payload).to_vec() }
 }
