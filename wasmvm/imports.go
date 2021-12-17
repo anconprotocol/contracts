@@ -140,7 +140,7 @@ func (h *Host) ReadDagBlock(data interface{}, mem *wasmedge.Memory, params []int
 	}
 
 	bz := []byte(block)
-	mem.SetData(bz, uint(params[4].(int32)), uint(len(bz)))
+	mem.SetData(bz, uint(params[0].(int32)), uint(len(bz)))
 
 	return nil, wasmedge.Result_Success
 }
@@ -158,15 +158,15 @@ func (h *Host) WriteDagBlock(data interface{}, mem *wasmedge.Memory, params []in
 	// 	return nil, wasmedge.Result_Fail
 	// }
 
-	n, err :=sdk.Decode(basicnode.Prototype.Any,(string(arg1)))
-	cid := h.storage.Store(ipld.LinkContext{},n)
+	n, err := sdk.Decode(basicnode.Prototype.Any, (string(arg1)))
+	cid := h.storage.Store(ipld.LinkContext{}, n)
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 
 	bz := []byte(cid.String())
-		
-	err = mem.SetData(bz, uint(params[0].(int32)),uint(len(bz)))
+
+	err = mem.SetData(bz, uint(params[0].(int32)), uint(len(bz)))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}

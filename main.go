@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -12,7 +13,6 @@ import (
 )
 
 func main() {
-
 
 	dataFolder := ".ancon"
 	anconstorage := sdk.NewStorage(dataFolder)
@@ -49,7 +49,6 @@ func main() {
 	var res interface{}
 	var err error
 
-
 	payload := []byte(`{ "name":"" , "image":"", "description":""}`)
 	res, err = vm.ExecuteBindgen("store", wasmedge.Bindgen_return_array, payload)
 	if err == nil {
@@ -58,9 +57,12 @@ func main() {
 		fmt.Println("Run bindgen -- store FAILED")
 	}
 
+	resBytes := bytes.Trim(res.([]byte), "\x00")
+	sprintRes := fmt.Sprintf(`query{metadata(cid:"%s",path:"/"){image}}`, string(resBytes))
 
-	q := []byte(`query { metadata(cid:"babfy",path:"/")  {image}}`)
-		res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, q)
+	q := []byte(sprintRes)
+
+	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, q)
 	if err == nil {
 		fmt.Println("Run bindgen -- execute:", string(res.([]byte)))
 	} else {

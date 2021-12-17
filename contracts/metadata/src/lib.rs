@@ -98,7 +98,9 @@ impl Query {
     fn metadata(context: &Context, cid: String, path: String) -> Ancon721Metadata {
         unsafe {
             let metadata = read_dag_block(&cid, &path);
-            let res = serde_json::from_slice(&metadata);
+            let meta_string = String::from(metadata.to_vec());
+            let meta_trim = meta_string.trim_matches(char::from(0));
+            let res = serde_json::from_slice(&meta_trim.as_bytes());
             res.unwrap()
         }
     }
