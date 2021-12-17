@@ -1,4 +1,4 @@
- 
+    
 extern "C" {
     #[no_mangle]
     pub fn write_store(key: &str, value: &str) -> [u8;1024];

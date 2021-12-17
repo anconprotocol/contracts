@@ -97,10 +97,12 @@ impl Query {
 
     fn metadata(context: &Context, cid: String, path: String) -> Ancon721Metadata {
         unsafe {
-            let metadata = read_dag_block(&cid, &path);
-            let meta_string = String::from(metadata.to_vec());
-            let meta_trim = meta_string.trim_matches(char::from(0));
-            let res = serde_json::from_slice(&meta_trim.as_bytes());
+            let m = read_dag_block(&cid, &path);
+            let metadata = m.iter().map(|b| *b as char).collect::<String>();
+
+            let cleaned = metadata.trim_end_matches(char::from(0));
+            // let s = format!("{}", "{\"description\":\"description\",\"image\":\"http://ipfs.io/ipfs/\",\"name\":\"test\",\"owner\":\"\",\"parent\":\"\",\"sources\":[]}");
+            let res = serde_json::from_str(&cleaned);
             res.unwrap()
         }
     }
@@ -185,7 +187,7 @@ pub fn store(data: &str) -> Vec<u8> {
         sources: [].to_vec(),
     };
 
-    let json_payload = serde_json::to_string_pretty(&payload).unwrap();
+    let json_payload = serde_json::to_string(&payload).unwrap();
 
     unsafe { write_dag_block(&json_payload).to_vec() }
 }
