@@ -1,3 +1,5 @@
+use crate::verify_proof_onchain;
+use crate::get_proof_by_cid;
 use crate::sdk::focused_transform_patch_str;
 use crate::sdk::read_dag;
 use crate::sdk::{read_dag_block, write_dag_block};
@@ -105,15 +107,20 @@ impl Mutation {
         let v = read_dag(&input.cid);
         let res = serde_json::from_slice(&v);
         let metadata: Ancon721Metadata = res.unwrap();
+        let proof = get_proof_by_cid(&input.cid);
+        let result = verify_proof_onchain(proof);
+        if result.is_true() {
+            let updated_cid =
+                focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
+            let updated =
+                focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
 
-        let updated_cid =
-            focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
-        let updated =
-            focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
+            let v = read_dag(&updated);
+            let res = serde_json::from_slice(&v);
+            let metadata = res.unwrap();
+            apply_request_with_proof(tx, proof, offchain_data_cid, cid);
+        }
 
-        let v = read_dag(&updated);
-        let res = serde_json::from_slice(&v);
-        let metadata = res.unwrap();
         metadata
     }
 }
@@ -130,4 +137,9 @@ type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
 
 pub fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
+}
+
+pub fn apply_request_with_proof(tx: &str, proof: &str, cid: &str) -> &'static str {
+    //  TODO:  submit_proof  and get_proof_by_cid
+    ""
 }

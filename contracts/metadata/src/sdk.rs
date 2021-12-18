@@ -43,6 +43,12 @@ extern "C" {
     ) -> [u8; 1024];
 
     #[no_mangle]
+    pub fn get_proof_by_cid(key: &str) -> [u8; 1024];
+
+    #[no_mangle]
+    pub fn verify_proof_onchain(key: &str) -> [u8; 1024];
+
+    #[no_mangle]
     pub fn write_store(key: &str) -> [u8; 1024];
 
     #[no_mangle]

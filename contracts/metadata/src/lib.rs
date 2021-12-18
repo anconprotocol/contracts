@@ -1,24 +1,47 @@
+use crate::sdk::verify_proof_onchain;
+use crate::sdk::get_proof_by_cid;
+use crate::contract::apply_request_with_proof;
 use crate::sdk::{read_dag_block, write_dag_block};
 
 #[macro_use]
 extern crate juniper_codegen;
 
-pub mod sdk;
 pub mod contract;
+pub mod sdk;
 
-use crate::contract::{Context, schema, Ancon721Metadata};
+use crate::contract::{schema, Ancon721Metadata, Context};
 use wasm_bindgen::prelude::*;
 extern crate juniper;
 
-use juniper::{
-    Variables,
-};
+use juniper::Variables;
 use serde_json::json;
 
 use std::collections::HashMap;
 
 use std::str;
 use std::vec::*;
+
+#[wasm_bindgen()]
+pub fn run_secure_offchain(
+    offchain_data_cid: &str,
+    chain: i32,
+    trusted_resp: &str,
+    tx: &str,
+) -> String {
+    if resp.is_valid == true {
+        let proof = get_proof_by_cid(offchain_data_cid);
+        let result = verify_proof_onchain(proof);
+
+        if result.is_true() {
+            // update
+            let cid = execute("mutation {}");
+
+            apply_request_with_proof(tx, proof, offchain_data_cid, cid);
+        }
+    }
+
+    ""
+}
 
 #[wasm_bindgen()]
 pub fn execute(query: &str) -> String {
