@@ -1,3 +1,4 @@
+use crate::sdk::focused_transform_patch_str;
 use crate::sdk::read_dag;
 use crate::sdk::{read_dag_block, write_dag_block};
 
@@ -13,7 +14,6 @@ use std::collections::HashMap;
 
 use std::str;
 use std::vec::*;
-use wasm_bindgen::prelude::*;
 
 pub struct Context {
     pub metadata: HashMap<String, Ancon721Metadata>,
@@ -101,28 +101,29 @@ pub struct Mutation;
 
 #[graphql_object(context = Context)]
 impl Mutation {
-    async fn metadata(context: &Context, input :MetadataTransactionInput) -> Ancon721Metadata {
+    async fn metadata(context: &Context, input: MetadataTransactionInput) -> Ancon721Metadata {
         let v = read_dag(&input.cid);
         let res = serde_json::from_slice(&v);
-        let metadata = res.unwrap();
+        let metadata: Ancon721Metadata = res.unwrap();
 
-        let updated_cid = focused_transform_patch_str(&input.cid, "owner", metadata.owner(), input.new_owner);
-        let updated = focused_transform_patch_str(&updated_cid, "parent", metadata.parent(), input.cid);
+        let updated_cid =
+            focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
+        let updated =
+            focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
 
         let v = read_dag(&updated);
         let res = serde_json::from_slice(&v);
         let metadata = res.unwrap();
         metadata
     }
-
 }
 
 #[derive(Clone, Debug, GraphQLInputObject)]
 struct MetadataTransactionInput {
-  path: String,
-  cid: String,
-  owner: String,
-  new_owner: String,
+    path: String,
+    cid: String,
+    owner: String,
+    new_owner: String,
 }
 
 type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;

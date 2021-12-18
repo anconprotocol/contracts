@@ -1,3 +1,4 @@
+
 package transfer
 
 import (
@@ -122,4 +123,4 @@ func (adapter *OnchainAdapter) ApplyRequestWithProof(
 	}
 
 	return signedProofData, resultCid, nil
-}
+}				

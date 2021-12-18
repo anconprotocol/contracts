@@ -91,7 +91,7 @@ func (r *transactionResolver) Metadata(ctx context.Context, tx model.MetadataTra
 }
 
 // Query returns generated.QueryResolver implementation.
-func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
+		func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 // Transaction returns generated.TransactionResolver implementation.
 func (r *Resolver) Transaction() generated.TransactionResolver { return &transactionResolver{r} }

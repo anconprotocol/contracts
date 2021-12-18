@@ -57,6 +57,13 @@ func main() {
 		fmt.Println("Run bindgen -- store FAILED")
 	}
 
+	args := `mutation ($tx: MetadataTransactionInput!) {
+		metadata(tx: $tx) {
+		  parent
+		  owner
+		}
+	  }
+	  `
 	cid := strings.Trim(string(res.([]byte)), "\x00")
 	sprintRes := fmt.Sprintf(`query { metadata(cid:"%s", path:"/") { image } }`, cid)
 	fmt.Println("%s", sprintRes)

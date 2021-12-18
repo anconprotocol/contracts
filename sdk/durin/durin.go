@@ -45,7 +45,7 @@ func msgHandler(ctx *DurinService, to string, name string, args map[string]strin
 			NewOwner: args["toOwner"],
 		}
 		// Send graphql mutation for IPLD DAG computing
-		res, err := ctx.GqlClient.TransferOwnership(context.Background(), input)
+		res, err := ctx.GqlClient.					TransferOwnership(context.Background(), input)
 		if err != nil {
 			return nil, "", fmt.Errorf("transfer ownership reverted")
 		}
