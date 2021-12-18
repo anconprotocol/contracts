@@ -23,9 +23,9 @@ var func1 = wasmedge.NewFunctionType(
 		wasmedge.ValType_I32,
 		wasmedge.ValType_I32,
 	}, []wasmedge.ValType{})
+
 var func2 = wasmedge.NewFunctionType(
 	[]wasmedge.ValType{
-		wasmedge.ValType_I32,
 		wasmedge.ValType_I32,
 		wasmedge.ValType_I32,
 		wasmedge.ValType_I32,
@@ -40,7 +40,7 @@ func NewHost(storage sdk.Storage, proof *proofsignature.IavlProofAPI) *Host {
 func (h *Host) GetImports() *wasmedge.ImportObject {
 
 	n := wasmedge.NewImportObject("env")
-	fn1 := wasmedge.NewFunction(func2, h.WriteStore, nil, 0)
+	fn1 := wasmedge.NewFunction(func1, h.WriteStore, nil, 0)
 	n.AddFunction("write_store", fn1)
 
 	fn2 := wasmedge.NewFunction(func1, h.ReadStore, nil, 0)
@@ -140,9 +140,19 @@ func (h *Host) ReadDagBlock(data interface{}, mem *wasmedge.Memory, params []int
 	}
 
 	bz := []byte(block)
-	mem.SetData(bz, uint(params[0].(int32)), uint(len(bz)))
-
+	length := uint(len(bz))
+	x := i32tob(uint32(len(bz)))
+	mem.SetData(bz, uint(params[0].(int32)), length)
+	mem.SetData((x), uint(params[3].(int32)), length)
 	return nil, wasmedge.Result_Success
+}
+
+func i32tob(val uint32) []byte {
+	r := make([]byte, 4)
+	for i := uint32(0); i < 4; i++ {
+		r[i] = byte((val >> (8 * i)) & 0xff)
+	}
+	return r
 }
 
 // Host functions
@@ -159,6 +169,7 @@ func (h *Host) WriteDagBlock(data interface{}, mem *wasmedge.Memory, params []in
 	// }
 
 	n, err := sdk.Decode(basicnode.Prototype.Any, (string(arg1)))
+
 	cid := h.storage.Store(ipld.LinkContext{}, n)
 	if err != nil {
 		return nil, wasmedge.Result_Fail

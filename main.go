@@ -34,7 +34,6 @@ func main() {
 	wasi.InitWasi(
 		os.Args[1:],     /// The args
 		os.Environ(),    /// The envs
-		
 		[]string{".:."}, /// The mapping preopens
 	)
 
@@ -65,7 +64,7 @@ func main() {
 	q := []byte(sprintRes)
 
 	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, q)
-	
+
 	fmt.Println(string(res.([]byte)))
 
 	vm.Release()
