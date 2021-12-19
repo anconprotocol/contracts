@@ -1,4 +1,3 @@
-
 package transfer
 
 import (
@@ -8,7 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-					"github.com/0xPolygon/polygon-sdk/crypto"
+	"github.com/0xPolygon/polygon-sdk/crypto"
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
 	"github.com/umbracle/go-web3/abi"
 )
@@ -123,4 +122,4 @@ func (adapter *OnchainAdapter) ApplyRequestWithProof(
 	}
 
 	return signedProofData, resultCid, nil
-}				
+}

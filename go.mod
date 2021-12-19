@@ -12,7 +12,7 @@ require (
 	github.com/0xPolygon/polygon-sdk v0.0.0-20211207172349-a9ee5ed12815
 	github.com/99designs/gqlgen v0.14.0
 	github.com/Yamashou/gqlgenc v0.0.2
-	github.com/anconprotocol/sdk v0.1.0
+	github.com/anconprotocol/sdk v0.1.1
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0

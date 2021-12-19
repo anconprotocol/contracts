@@ -1,10 +1,20 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 pub fn focused_transform_patch_str(cid: &str, path: &str, prev: &str, next: &str) -> String {
     unsafe {
-        let l = cid.len() as usize;
-        let metadata = focused_transform_patch(cid, path, prev, next, NodeType::String).to_vec();
-        String::from_utf8(metadata[..l].to_vec()).unwrap()
+        let s: i32 = 0;
+        let payload = json!({
+            "cid": cid,
+            "nodeType": NodeType::String,
+            "previousValue": prev,
+            "nextValue": next,
+            "path": path
+        });
+        let lnk = focused_transform_patch(&payload.to_string(), &s).to_vec();
+        let x = s as usize;
+        let v = &lnk[..x];
+        String::from_utf8(v.to_vec()).unwrap()
     }
 }
 
@@ -19,13 +29,11 @@ pub fn read_dag(cid: &str) -> Vec<u8> {
 }
 
 pub fn submit_proof(payload: &str, prev_proof: &str, new_cid: &str) -> String {
-
     unsafe {
         let l = payload.len() as usize;
         let res = submit_proof_onchain(&payload, prev_proof, new_cid).to_vec();
         String::from_utf8(res[..l].to_vec()).unwrap()
     }
-
 }
 
 pub fn get_proof(cid: &str) -> String {
@@ -40,9 +48,11 @@ pub fn get_proof(cid: &str) -> String {
 
 pub fn verify_proof(data: &str) -> bool {
     unsafe {
-        let l = data.len() as usize;
-        let res = verify_proof_onchain(&data).to_vec();
-        let ok = String::from_utf8(res[..l].to_vec()).unwrap();
+        let s: i32 = 0;
+        let res = verify_proof_onchain(&data, &s);
+        let x = s as usize;
+        let v = &res[..x];
+        let ok = String::from_utf8(v.to_vec()).unwrap();
         ok == "true"
     }
 }
@@ -56,27 +66,16 @@ pub enum NodeType {
 extern "C" {
 
     #[no_mangle]
-    pub fn submit_proof_onchain(
-        input: &str,
-        prev_proof: &str,
-        cid: &str,
-    ) -> [u8; 1024];
-
+    pub fn submit_proof_onchain(input: &str, prev_proof: &str, cid: &str) -> [u8; 1024];
 
     #[no_mangle]
-    pub fn focused_transform_patch(
-        cid: &str,
-        path: &str,
-        prev: &str,
-        next: &str,
-        ntype: NodeType,
-    ) -> [u8; 1024];
+    pub fn focused_transform_patch(args: &str, ret: &i32) -> [u8; 1024];
 
     #[no_mangle]
     pub fn get_proof_by_cid(key: &str, ret: &i32) -> [u8; 1024];
 
     #[no_mangle]
-    pub fn verify_proof_onchain(key: &str) -> [u8; 1024];
+    pub fn verify_proof_onchain(key: &str, ret: &i32) -> [u8; 1024];
 
     #[no_mangle]
     pub fn write_store(key: &str) -> [u8; 1024];
