@@ -7,19 +7,29 @@ import (
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
 	"github.com/anconprotocol/sdk"
 	"github.com/anconprotocol/sdk/proofsignature"
+	ics23 "github.com/confio/ics23/go"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/must"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
+	"github.com/spf13/cast"
+	"github.com/umbracle/go-web3"
+	"github.com/umbracle/go-web3/abi"
+
 	"github.com/second-state/WasmEdge-go/wasmedge"
+	"github.com/umbracle/go-web3/contract"
+	"github.com/umbracle/go-web3/jsonrpc"
 )
 
 type Host struct {
-	storage *sdk.Storage
-	proof   *proofsignature.IavlProofAPI
-	gsync   *graphsync.GraphExchange
+	storage   *sdk.Storage
+	proof     *proofsignature.IavlProofAPI
+	gsync     *graphsync.GraphExchange
+	evm       *jsonrpc.Client
+	verifier  *contract.Contract
+	submitter *contract.Contract
 }
 
 var func1 = wasmedge.NewFunctionType(
@@ -48,8 +58,51 @@ var func3 = wasmedge.NewFunctionType(
 		wasmedge.ValType_I32,
 	}, []wasmedge.ValType{})
 
-func NewHost(storage sdk.Storage, proof *proofsignature.IavlProofAPI) *Host {
-	return &Host{storage: &storage, proof: proof}
+func NewEvmRelayHost(storage sdk.Storage,
+	proof *proofsignature.IavlProofAPI,
+	evmHostAddr string,
+	evmDestAddr string,
+	submitPacketWithProofAddr web3.Address,
+	validatorAddr web3.Address) *Host {
+
+	client, err := jsonrpc.NewClient(evmHostAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	destinationClient, err := jsonrpc.NewClient(evmDestAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	fn, err := abi.NewABIFromList([]string{`
+	function verifyProof(
+        uint256[] memory leafOpUint,
+        bytes memory prefix,
+        bytes[][] memory existenceProofInnerOp,
+        uint256 existenceProofInnerOpHash,
+        bytes memory existenceProofKey,
+        bytes memory existenceProofValue,
+        bytes memory root,
+        bytes memory key,
+        bytes memory value
+    ) public pure returns (bool)`})
+	verifier := contract.NewContract(validatorAddr, fn, client)
+
+	submitFn, err := abi.NewABIFromList([]string{`
+	function verifyProof(
+        uint256[] memory leafOpUint,
+        bytes memory prefix,
+        bytes[][] memory existenceProofInnerOp,
+        uint256 existenceProofInnerOpHash,
+        bytes memory existenceProofKey,
+        bytes memory existenceProofValue,
+        bytes memory root,
+        bytes memory key,
+        bytes memory value
+    ) public pure returns (bool)`})
+	submitter := contract.NewContract(submitPacketWithProofAddr, submitFn, destinationClient)
+	return &Host{storage: &storage, proof: proof, evm: client, verifier: verifier, submitter: submitter}
 
 }
 
@@ -293,17 +346,25 @@ func (h *Host) GetProofByCid(data interface{}, mem *wasmedge.Memory, params []in
 // Host functions
 func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
 
-	//	var err error
-	// arg1, err := mem.GetData(uint(params[1].(int32)), uint(params[2].(int32)))
-	// if err != nil {
-	// 	return nil, wasmedge.Result_Fail
-	// }
-	/// Call function
-	// arg2, err := mem.GetData(uint(params[3].(int32)), uint(params[4].(int32)))
-	// if err != nil {
-	// 	return nil, wasmedge.Result_Fail
-	// }
+	var err error
+	arg1, err := mem.GetData(uint(params[1].(int32)), uint(params[2].(int32)))
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+	var v map[string]interface{}
+	json.Unmarshal(arg1, &v)
 
+	var proof *ics23.CommitmentProof
+	json.Unmarshal([]byte(cast.ToString(v["proof"])), &proof)
+	payload:=""
+	// gas, err := h.verifier.EstimateGas("verifyProof", payload)
+
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+	b, err := h.evm.Eth().BlockNumber()
+
+	h.verifier.Call("verifyProof", web3.BlockNumber(b), payload)
 	// TODO: Verify proof onchain - smart contracts
 	// proof, err := h.proof.Service.GetWithProof(arg1)
 	// if err != nil {

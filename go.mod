@@ -22,13 +22,13 @@ require (
 require (
 	github.com/ipfs/go-graphsync v0.9.3
 	github.com/second-state/WasmEdge-go v0.9.0
-	github.com/spf13/cast v1.4.1
 	github.com/tendermint/tm-db v0.6.6
 )
 
 require (
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/confio/ics23/go v0.6.6 // indirect
@@ -55,6 +55,7 @@ require (
 	github.com/ipfs/go-cid v0.1.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.3.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
 	github.com/libp2p/go-libp2p-core v0.8.6 // indirect
@@ -82,6 +83,8 @@ require (
 	github.com/tendermint/tendermint v0.35.0 // indirect
 	github.com/umbracle/fastrlp v0.0.0-20210128110402-41364ca56ca8 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.30.0 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect
 	github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect

@@ -28,11 +28,14 @@ pub fn read_dag(cid: &str) -> Vec<u8> {
     }
 }
 
-pub fn submit_proof(payload: &str, prev_proof: &str, new_cid: &str) -> String {
+pub fn submit_proof(data: &str, s: &i32) -> String {
     unsafe {
-        let l = payload.len() as usize;
-        let res = submit_proof_onchain(&payload, prev_proof, new_cid).to_vec();
-        String::from_utf8(res[..l].to_vec()).unwrap()
+        let s: i32 = 0;
+        let res = submit_proof_onchain(&data, &s);
+        let x = s as usize;
+        let v = &res[..x];
+        let ok = String::from_utf8(v.to_vec()).unwrap();
+        ok
     }
 }
 
@@ -61,12 +64,13 @@ pub fn verify_proof(data: &str) -> bool {
 pub enum NodeType {
     String = 0,
     Bytes = 1,
+    Link = 2,
 }
 
 extern "C" {
 
     #[no_mangle]
-    pub fn submit_proof_onchain(input: &str, prev_proof: &str, cid: &str) -> [u8; 1024];
+    pub fn submit_proof_onchain(input: &str, ret: &i32) -> [u8; 1024];
 
     #[no_mangle]
     pub fn focused_transform_patch(args: &str, ret: &i32) -> [u8; 1024];

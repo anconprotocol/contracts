@@ -10,6 +10,7 @@ import (
 	"github.com/anconprotocol/sdk/proofsignature"
 	"github.com/second-state/WasmEdge-go/wasmedge"
 	dbm "github.com/tendermint/tm-db"
+	"github.com/umbracle/go-web3"
 )
 
 func main() {
@@ -19,8 +20,13 @@ func main() {
 	db := dbm.NewMemDB()
 
 	proofs, _ := proofsignature.NewIavlAPI(anconstorage, nil, db, 2000, 0)
+	homeChain := "http://localhost:8545"
+	destinationChain := "http://localhost:8546"
 
-	host := wasmvm.NewHost(anconstorage, proofs)
+	verifier := web3.BytesToAddress([]byte(""))
+	submitter := web3.BytesToAddress([]byte(""))
+	// todo: implement root updater and chain interface
+	host := wasmvm.NewEvmRelayHost(anconstorage, proofs, homeChain, destinationChain, submitter, verifier)
 	wasmedge.SetLogErrorLevel()
 
 	/// Create configure
@@ -57,7 +63,6 @@ func main() {
 		fmt.Println("Run bindgen -- store FAILED")
 	}
 
-
 	cid := strings.Trim(string(res.([]byte)), "\x00")
 	sprintRes := fmt.Sprintf(`query { metadata(cid:"%s", path:"/") { image } }`, cid)
 	fmt.Println("%s", sprintRes)
@@ -68,20 +73,17 @@ func main() {
 
 	fmt.Println(string(res.([]byte)))
 
-
 	args := fmt.Sprintf(`mutation {
 		transfer(input:{path: "%s", cid: "%s", owner:"%s", newOwner:"%s"}){
 		  cid
 		}
 	  }
 	  `, "/", cid, "alice", "bob")
-	  res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(args))
+	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(args))
 
-	  fmt.Println(string(res.([]byte)))
-  
+	fmt.Println(string(res.([]byte)))
 
 	vm.Release()
 
 	conf.Release()
 }
-
