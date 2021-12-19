@@ -57,13 +57,7 @@ func main() {
 		fmt.Println("Run bindgen -- store FAILED")
 	}
 
-	args := `mutation ($tx: MetadataTransactionInput!) {
-		metadata(tx: $tx) {
-		  parent
-		  owner
-		}
-	  }
-	  `
+
 	cid := strings.Trim(string(res.([]byte)), "\x00")
 	sprintRes := fmt.Sprintf(`query { metadata(cid:"%s", path:"/") { image } }`, cid)
 	fmt.Println("%s", sprintRes)
@@ -73,6 +67,18 @@ func main() {
 	res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, q)
 
 	fmt.Println(string(res.([]byte)))
+
+
+	args := fmt.Sprintf(`mutation {
+		transfer(input:{path: "%s", cid: "%s", owner:"%s", newOwner:"%s"}){
+		  cid
+		}
+	  }
+	  `, "/", cid, "alice", "bob")
+	  res, err = vm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, []byte(args))
+
+	  fmt.Println(string(res.([]byte)))
+  
 
 	vm.Release()
 

@@ -1,6 +1,3 @@
-use crate::sdk::verify_proof_onchain;
-use crate::sdk::get_proof_by_cid;
-use crate::contract::apply_request_with_proof;
 use crate::sdk::{read_dag_block, write_dag_block};
 
 #[macro_use]
@@ -21,32 +18,12 @@ use std::collections::HashMap;
 use std::str;
 use std::vec::*;
 
-#[wasm_bindgen()]
-pub fn run_secure_offchain(
-    offchain_data_cid: &str,
-    chain: i32,
-    trusted_resp: &str,
-    tx: &str,
-) -> String {
-    if resp.is_valid == true {
-        let proof = get_proof_by_cid(offchain_data_cid);
-        let result = verify_proof_onchain(proof);
-
-        if result.is_true() {
-            // update
-            let cid = execute("mutation {}");
-
-            apply_request_with_proof(tx, proof, offchain_data_cid, cid);
-        }
-    }
-
-    ""
-}
 
 #[wasm_bindgen()]
 pub fn execute(query: &str) -> String {
     let ctx = Context {
         metadata: HashMap::default(),
+        transfer: HashMap::default()
     };
 
     let v = Variables::new();
@@ -71,7 +48,7 @@ pub fn store(data: &str) -> Vec<u8> {
         name: "test".to_string(),
         description: "description".to_string(),
         image: "http://ipfs.io/ipfs/".to_string(),
-        owner: "".to_string(),
+        owner: "alice".to_string(),
         parent: "".to_string(),
         sources: [].to_vec(),
     };

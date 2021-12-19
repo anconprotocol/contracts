@@ -1,8 +1,8 @@
-use crate::verify_proof_onchain;
-use crate::get_proof_by_cid;
 use crate::sdk::focused_transform_patch_str;
 use crate::sdk::read_dag;
-use crate::sdk::{read_dag_block, write_dag_block};
+use crate::sdk::submit_proof;
+use crate::sdk::{get_proof, read_dag_block, verify_proof, write_dag_block};
+use juniper::FieldResult;
 
 extern crate juniper;
 
@@ -19,14 +19,53 @@ use std::vec::*;
 
 pub struct Context {
     pub metadata: HashMap<String, Ancon721Metadata>,
+    pub transfer: HashMap<String, MetadataPacket>,
 }
 
 impl juniper::Context for Context {}
 
-#[derive(GraphQLObject, Clone, Debug, Serialize, Deserialize)]
-pub struct DagLink {
-    path: String,
-    cid: String,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MetadataPacket {
+    pub cid: String,
+    pub from_owner: String,
+    pub result_cid: String,
+    pub to_owner: String,
+    pub to_address: String,
+    pub id: String,
+    pub prefix: String,
+    pub signature: String,
+}
+
+#[graphql_object(context = Context)]
+impl MetadataPacket {
+    fn cid(&self) -> &str {
+        &self.cid
+    }
+
+    fn from_owner(&self) -> &str {
+        &self.from_owner
+    }
+
+    fn result_cid(&self) -> &str {
+        &self.result_cid
+    }
+    fn to_owner(&self) -> &str {
+        &self.to_owner
+    }
+
+    fn to_address(&self) -> &str {
+        &self.to_address
+    }
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn prefix(&self) -> &str {
+        &self.prefix
+    }
+    fn signature(&self) -> &str {
+        &self.signature
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,17 +96,12 @@ impl Ancon721Metadata {
     }
 
     fn owner(&self) -> &str {
-        &self.parent
+        &self.owner
     }
 
-    async fn sources(&self) -> Vec<String> {
-        vec![]
+    async fn sources(&self) -> &Vec<String> {
+        &self.sources
     }
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct DagContractTrusted {
-    data: DagLink,
-    payload: Ancon721Metadata,
 }
 
 // pub struct Subscription;
@@ -103,29 +137,46 @@ pub struct Mutation;
 
 #[graphql_object(context = Context)]
 impl Mutation {
-    async fn metadata(context: &Context, input: MetadataTransactionInput) -> Ancon721Metadata {
+    // async fn metadata(context: &Context, input: MetadataTransactionInput) -> FieldResult<Ancon721Metadata, Err<String> {
+    //     Ancon721Metadata{}
+    // }
+    fn transfer(
+        context: &Context,
+        input: MetadataTransactionInput,
+    ) -> MetadataPacket {
         let v = read_dag(&input.cid);
         let res = serde_json::from_slice(&v);
         let metadata: Ancon721Metadata = res.unwrap();
-        let proof = get_proof_by_cid(&input.cid);
-        let result = verify_proof_onchain(proof);
-        if result.is_true() {
+        let proof = get_proof(&input.cid);
+        let result = verify_proof(&proof);
+        if result {
             let updated_cid =
                 focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
             let updated =
                 focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
 
-            let v = read_dag(&updated);
+            let proof_cid = apply_request_with_proof(input, &proof, &updated);
+            let v = read_dag(&proof_cid);
             let res = serde_json::from_slice(&v);
-            let metadata = res.unwrap();
-            apply_request_with_proof(tx, proof, offchain_data_cid, cid);
+            let packet: MetadataPacket = res.unwrap();
+            packet
+        } else {
+           let empty = MetadataPacket {
+                cid: "".to_string(),
+                from_owner: "".to_string(),
+                result_cid: "".to_string(),
+                to_owner: "".to_string(),
+                to_address: "".to_string(),
+                id: "".to_string(),
+                prefix: "".to_string(),
+                signature: "".to_string(),
+            };
+            empty
         }
-
-        metadata
     }
 }
 
-#[derive(Clone, Debug, GraphQLInputObject)]
+#[derive(Clone, Debug, GraphQLInputObject, Serialize, Deserialize)]
 struct MetadataTransactionInput {
     path: String,
     cid: String,
@@ -139,7 +190,13 @@ pub fn schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::<Context>::new())
 }
 
-pub fn apply_request_with_proof(tx: &str, proof: &str, cid: &str) -> &'static str {
-    //  TODO:  submit_proof  and get_proof_by_cid
-    ""
+fn apply_request_with_proof(
+    input: MetadataTransactionInput,
+    prev_proof: &str,
+    new_cid: &str,
+) -> String {
+    // Must combined proofs (prev and new) in host function
+    // then send to chain and return result
+    let js = serde_json::to_string(&input).unwrap();
+    submit_proof(&js, prev_proof, new_cid)
 }
