@@ -18,12 +18,11 @@ use std::collections::HashMap;
 use std::str;
 use std::vec::*;
 
-
 #[wasm_bindgen()]
 pub fn execute(query: &str) -> String {
     let ctx = Context {
         metadata: HashMap::default(),
-        transfer: HashMap::default()
+        transfer: HashMap::default(),
     };
 
     let v = Variables::new();
@@ -35,11 +34,17 @@ pub fn execute(query: &str) -> String {
         .map(|i| i.error().message().to_string())
         .collect::<Vec<String>>();
 
-    json!({
-        "data":data.to_string(),
-        "errors": errors,
-    })
-    .to_string()
+    if errors.is_empty() {
+        json!({
+            "data":data.to_string(),
+        })
+        .to_string()
+    } else {
+        json!({
+            "errors": errors,
+        })
+        .to_string()
+    }
 }
 
 #[wasm_bindgen]
