@@ -15,8 +15,12 @@ type EncodePackedExistenceProof struct {
 	Value         []byte
 }
 
-func encodePacked(p *ics23.ExistenceProof) *EncodePackedExistenceProof {
+func encodePacked(v map[string]interface{}) *EncodePackedExistenceProof {
 
+	var p *ics23.ExistenceProof
+	t := v["Proof"].(map[string]interface{})
+	t = t["compressed"].(map[string]interface{})
+	r = t["entries"].([]interface{})
 	innerOp := make(map[int32][]byte, 2)
 	leafOp := make(map[int32]int32, 4)
 
@@ -36,7 +40,6 @@ func encodePacked(p *ics23.ExistenceProof) *EncodePackedExistenceProof {
 	base64.RawStdEncoding.Decode(value, p.Value)
 	base64.RawStdEncoding.Decode(prefix, p.Leaf.Prefix)
 	innerOpHash = ics23.HashOp_value[p.Path[0].Hash.String()]
-
 
 	return &EncodePackedExistenceProof{
 		LeafOp:        leafOp,

@@ -7,7 +7,7 @@ import (
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
 	"github.com/anconprotocol/sdk"
 	"github.com/anconprotocol/sdk/proofsignature"
-	ics23 "github.com/confio/ics23/go"
+	_ "github.com/confio/ics23/go"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -47,17 +47,6 @@ var func2 = wasmedge.NewFunctionType(
 		wasmedge.ValType_I32,
 	}, []wasmedge.ValType{})
 
-var func3 = wasmedge.NewFunctionType(
-	[]wasmedge.ValType{
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-	}, []wasmedge.ValType{})
-
 func NewEvmRelayHost(storage sdk.Storage,
 	proof *proofsignature.IavlProofAPI,
 	evmHostAddr string,
@@ -90,17 +79,15 @@ func NewEvmRelayHost(storage sdk.Storage,
 	verifier := contract.NewContract(validatorAddr, fn, client)
 
 	submitFn, err := abi.NewABIFromList([]string{`
-	function verifyProof(
+    function submitPacketWithProof(
         uint256[] memory leafOpUint,
         bytes memory prefix,
         bytes[][] memory existenceProofInnerOp,
         uint256 existenceProofInnerOpHash,
-        bytes memory existenceProofKey,
-        bytes memory existenceProofValue,
-        bytes memory root,
         bytes memory key,
-        bytes memory value
-    ) public pure returns (bool)`})
+        bytes memory value,
+        bytes memory packet
+    ) public payable returns (bool)`})
 	submitter := contract.NewContract(submitPacketWithProofAddr, submitFn, destinationClient)
 	return &Host{storage: &storage, proof: proof, evm: client, verifier: verifier, submitter: submitter}
 
@@ -112,7 +99,7 @@ func (h *Host) GetImports() *wasmedge.ImportObject {
 	fn1 := wasmedge.NewFunction(func2, h.GetProofByCid, nil, 0)
 	n.AddFunction("get_proof_by_cid", fn1)
 
-	submit := wasmedge.NewFunction(func3, h.SubmitProof, nil, 0)
+	submit := wasmedge.NewFunction(func2, h.SubmitProof, nil, 0)
 	n.AddFunction("submit_proof_onchain", submit)
 
 	verify := wasmedge.NewFunction(func2, h.VerifyProof, nil, 0)
@@ -352,18 +339,21 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 		return nil, wasmedge.Result_Fail
 	}
 	var v map[string]interface{}
-	proof := &ics23.CommitmentProof{}
 	err = json.Unmarshal(arg1, &v)
-	str := fmt.Sprintf(`{"proof":"%s"}`, v["proof"])
-	json.Unmarshal([]byte(str), &proof)
 
-	abiIcs23Proof := encodePacked(proof.GetExist())
+	buf := v["proof"].(map[string]interface{})
+
+	p := buf["proofs"].([]interface{})
+	abiIcs23Proof := encodePacked(p[0].(map[string]interface{}))
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 	b, err := h.evm.Eth().BlockNumber()
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
 	cid, err := sdk.ParseCidLink(string(abiIcs23Proof.Key))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
