@@ -12,7 +12,7 @@ require (
 	github.com/0xPolygon/polygon-sdk v0.0.0-20211207172349-a9ee5ed12815
 	github.com/99designs/gqlgen v0.14.0
 	github.com/Yamashou/gqlgenc v0.0.2
-	github.com/anconprotocol/sdk v0.0.0-20211220151614-7a3befc11eb6
+	github.com/anconprotocol/sdk v0.0.0-20211220175629-81de6df5eda5
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0
@@ -20,8 +20,8 @@ require (
 )
 
 require (
+	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/confio/ics23/go v0.6.6
-	github.com/cosmos/ibc-go/v2 v2.0.0
 	github.com/ipfs/go-graphsync v0.9.3
 	github.com/second-state/WasmEdge-go v0.9.0
 	github.com/tendermint/tm-db v0.6.6
@@ -39,6 +39,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cosmos/cosmos-sdk v0.44.3 // indirect
 	github.com/cosmos/iavl v0.17.3 // indirect
+	github.com/cosmos/ibc-go/v2 v2.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect

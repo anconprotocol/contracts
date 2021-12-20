@@ -32,20 +32,25 @@ type Host struct {
 	submitter *contract.Contract
 }
 
-var func1 = wasmedge.NewFunctionType(
-	[]wasmedge.ValType{
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-	}, []wasmedge.ValType{})
+var (
+	WasmFuncType1 *wasmedge.FunctionType = wasmedge.NewFunctionType(
+		[]wasmedge.ValType{
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+		}, []wasmedge.ValType{})
 
-var func2 = wasmedge.NewFunctionType(
-	[]wasmedge.ValType{
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-		wasmedge.ValType_I32,
-	}, []wasmedge.ValType{})
+	WasmFuncType2 = wasmedge.NewFunctionType(
+		[]wasmedge.ValType{
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+			wasmedge.ValType_I32,
+		}, []wasmedge.ValType{})
+
+	genesis   string = ""
+	ROOT_PATH string = "/anconprotocol/onchain"
+)
 
 func NewEvmRelayHost(storage sdk.Storage,
 	proof *proofsignature.IavlProofAPI,
@@ -63,6 +68,12 @@ func NewEvmRelayHost(storage sdk.Storage,
 	if err != nil {
 		panic(err)
 	}
+
+	lnk := sdk.CreateCidLink([]byte("merkle tree random root hash"))
+
+	// genesis
+	genesis = fmt.Sprintf("%s/%s", ROOT_PATH, lnk.String())
+	proof.Service.Set([]byte(genesis), lnk.Bytes())
 
 	fn, err := abi.NewABIFromList([]string{`
 	function verifyProof(
@@ -96,22 +107,22 @@ func NewEvmRelayHost(storage sdk.Storage,
 func (h *Host) GetImports() *wasmedge.ImportObject {
 
 	n := wasmedge.NewImportObject("env")
-	fn1 := wasmedge.NewFunction(func2, h.GetProofByCid, nil, 0)
+	fn1 := wasmedge.NewFunction(WasmFuncType2, h.GetProofByCid, nil, 0)
 	n.AddFunction("get_proof_by_cid", fn1)
 
-	submit := wasmedge.NewFunction(func2, h.SubmitProof, nil, 0)
+	submit := wasmedge.NewFunction(WasmFuncType2, h.SubmitProof, nil, 0)
 	n.AddFunction("submit_proof_onchain", submit)
 
-	verify := wasmedge.NewFunction(func2, h.VerifyProof, nil, 0)
+	verify := wasmedge.NewFunction(WasmFuncType2, h.VerifyProof, nil, 0)
 	n.AddFunction("verify_proof_onchain", verify)
 
-	ft := wasmedge.NewFunction(func2, h.FocusedTransformPatch, nil, 0)
+	ft := wasmedge.NewFunction(WasmFuncType2, h.FocusedTransformPatch, nil, 0)
 	n.AddFunction("focused_transform_patch", ft)
 
-	fn3 := wasmedge.NewFunction(func2, h.ReadDagBlock, nil, 0)
+	fn3 := wasmedge.NewFunction(WasmFuncType2, h.ReadDagBlock, nil, 0)
 	n.AddFunction("read_dag_block", fn3)
 
-	fn4 := wasmedge.NewFunction(func1, h.WriteDagBlock, nil, 0)
+	fn4 := wasmedge.NewFunction(WasmFuncType1, h.WriteDagBlock, nil, 0)
 	n.AddFunction("write_dag_block", fn4)
 
 	return n
@@ -185,8 +196,11 @@ func (h *Host) WriteDagBlock(data interface{}, mem *wasmedge.Memory, params []in
 
 	var hashed []byte
 	r := keccak.Keccak256(hashed, arg1)
-	id, err := h.proof.Service.Set([]byte(cid.String()), r)
-	fmt.Println(id, err, r)
+
+	// next
+	path := fmt.Sprintf("%s/%s", genesis, cid.String())
+	h.proof.Service.Set([]byte(path), r)
+
 	bz := []byte(cid.String())
 
 	err = mem.SetData(bz, uint(params[0].(int32)), uint(len(bz)))
@@ -314,8 +328,8 @@ func (h *Host) GetProofByCid(data interface{}, mem *wasmedge.Memory, params []in
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-
-	proof, err := h.proof.Service.GetWithProof([]byte(cid.String()))
+	path := fmt.Sprintf("%s/%s", genesis, cid.String())
+	proof, err := h.proof.Service.GetWithProof([]byte(path))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
@@ -338,18 +352,9 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-	var v map[string]interface{}
-	err = json.Unmarshal(arg1, &v)
-
-	buf := v["proof"].(map[string]interface{})
-
-	p := buf["proofs"].([]interface{})
-	abiIcs23Proof := encodePacked(p[0].(map[string]interface{}))
+	abiIcs23Proof := encodePacked(arg1)
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
-	if err != nil {
-		return nil, wasmedge.Result_Fail
-	}
 	b, err := h.evm.Eth().BlockNumber()
 	if err != nil {
 		return nil, wasmedge.Result_Fail
