@@ -12,7 +12,7 @@ require (
 	github.com/0xPolygon/polygon-sdk v0.0.0-20211207172349-a9ee5ed12815
 	github.com/99designs/gqlgen v0.14.0
 	github.com/Yamashou/gqlgenc v0.0.2
-	github.com/anconprotocol/sdk v0.1.1
+	github.com/anconprotocol/sdk v0.1.2
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0
@@ -20,9 +20,11 @@ require (
 )
 
 require (
+	github.com/confio/ics23/go v0.6.6
 	github.com/ipfs/go-graphsync v0.9.3
 	github.com/second-state/WasmEdge-go v0.9.0
 	github.com/tendermint/tm-db v0.6.6
+	google.golang.org/protobuf v1.27.1
 )
 
 require (
@@ -31,7 +33,6 @@ require (
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/confio/ics23/go v0.6.6 // indirect
 	github.com/cosmos/iavl v0.17.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
@@ -97,7 +98,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210917145530-b395a37504d4 // indirect
 	google.golang.org/grpc v1.42.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 )

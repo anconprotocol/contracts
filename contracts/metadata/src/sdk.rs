@@ -28,7 +28,7 @@ pub fn read_dag(cid: &str) -> Vec<u8> {
     }
 }
 
-pub fn submit_proof(data: &str, s: &i32) -> String {
+pub fn submit_proof(data: &str) -> String {
     unsafe {
         let s: i32 = 0;
         let res = submit_proof_onchain(&data, &s);

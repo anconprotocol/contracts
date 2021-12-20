@@ -11,6 +11,7 @@ use juniper::{
     RootNode, Variables,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use std::collections::HashMap;
 
@@ -197,6 +198,10 @@ fn apply_request_with_proof(
 ) -> String {
     // Must combined proofs (prev and new) in host function
     // then send to chain and return result
-    let js = serde_json::to_string(&input).unwrap();
-    submit_proof(&js, prev_proof, new_cid)
+    let js = json!({
+        "previous": prev_proof,
+        "next_cid": new_cid,
+        "inpur": input
+    });
+    submit_proof(&js.to_string())
 }

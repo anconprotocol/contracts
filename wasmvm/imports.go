@@ -14,9 +14,9 @@ import (
 	"github.com/ipld/go-ipld-prime/must"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
-	"github.com/spf13/cast"
 	"github.com/umbracle/go-web3"
 	"github.com/umbracle/go-web3/abi"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/second-state/WasmEdge-go/wasmedge"
 	"github.com/umbracle/go-web3/contract"
@@ -352,25 +352,59 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 		return nil, wasmedge.Result_Fail
 	}
 	var v map[string]interface{}
-	json.Unmarshal(arg1, &v)
+	proof := &ics23.CommitmentProof{}
+	err = json.Unmarshal(arg1, &v)
+	str := fmt.Sprintf(`{"proof":"%s"}`, v["proof"])
+	json.Unmarshal([]byte(str), &proof)
 
-	var proof *ics23.CommitmentProof
-	json.Unmarshal([]byte(cast.ToString(v["proof"])), &proof)
-	payload:=""
-	// gas, err := h.verifier.EstimateGas("verifyProof", payload)
+	abiIcs23Proof := encodePacked(proof.GetExist())
+	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 	b, err := h.evm.Eth().BlockNumber()
+	cid, err := sdk.ParseCidLink(string(abiIcs23Proof.Key))
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
 
-	h.verifier.Call("verifyProof", web3.BlockNumber(b), payload)
+	// path := string(arg2)
+
+	result, err := h.storage.Load(ipld.LinkContext{}, cid)
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+
+	block, err := sdk.Encode(result)
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+
+	var hashed []byte
+	value := keccak.Keccak256(hashed, []byte(block))
+	root, err := h.proof.Service.Hash(&emptypb.Empty{})
+	ret, err := h.verifier.Call("verifyProof", web3.BlockNumber(b),
+		abiIcs23Proof.LeafOp,
+		abiIcs23Proof.Prefix,
+		abiIcs23Proof.InnerOp,
+		abiIcs23Proof.InnerOpHashOp,
+		abiIcs23Proof.Key,
+		abiIcs23Proof.Value,
+		root,
+		abiIcs23Proof.Key,
+		value)
 	// TODO: Verify proof onchain - smart contracts
 	// proof, err := h.proof.Service.GetWithProof(arg1)
 	// if err != nil {
 	// 	return nil, wasmedge.Result_Fail
 	// }
+
+	fmt.Println(ret, err)
 	bz := []byte("true")
+	if err != nil {
+		bz = []byte("false")
+	}
 
 	length := uint(len(bz))
 	x := i32tob(uint32(len(bz)))
