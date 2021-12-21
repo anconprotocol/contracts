@@ -32,9 +32,8 @@ pub struct MetadataPacket {
     pub result_cid: String,
     pub to_owner: String,
     pub to_address: String,
-    pub id: String,
-    pub prefix: String,
-    pub signature: String,
+    pub token_id: String,
+    pub proof: Vec<u8>,
 }
 
 #[graphql_object(context = Context)]
@@ -58,15 +57,13 @@ impl MetadataPacket {
         &self.to_address
     }
 
-    fn id(&self) -> &str {
+    fn token_id(&self) -> &str {
         &self.id
     }
-    fn prefix(&self) -> &str {
-        &self.prefix
+    fn proof(&self) -> &Vec<u8> {
+        &self.id
     }
-    fn signature(&self) -> &str {
-        &self.signature
-    }
+
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -141,39 +138,29 @@ impl Mutation {
     // async fn metadata(context: &Context, input: MetadataTransactionInput) -> FieldResult<Ancon721Metadata, Err<String> {
     //     Ancon721Metadata{}
     // }
+    //Dagblock mutation
     fn transfer(
         context: &Context,
         input: MetadataTransactionInput,
-    ) -> MetadataPacket {
+    ) -> Vec<MetadataPacket> {
         let v = read_dag(&input.cid);
         let res = serde_json::from_slice(&v);
         let metadata: Ancon721Metadata = res.unwrap();
-        let proof = get_proof(&input.cid);
-        let result = verify_proof(&proof);
-        if result {
-            let updated_cid =
-                focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
-            let updated =
-                focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
+        //generate current metadata proof packet
+        let proof = generate_proof(&input.cid);
 
-            let proof_cid = apply_request_with_proof(input, &proof, &updated);
-            let v = read_dag(&proof_cid);
-            let res = serde_json::from_slice(&v);
-            let packet: MetadataPacket = res.unwrap();
-            packet
-        } else {
-           let empty = MetadataPacket {
-                cid: "".to_string(),
-                from_owner: "".to_string(),
-                result_cid: "".to_string(),
-                to_owner: "".to_string(),
-                to_address: "".to_string(),
-                id: "".to_string(),
-                prefix: "".to_string(),
-                signature: "".to_string(),
-            };
-            empty
-        }
+        let updated_cid =
+            focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
+        let updated =
+            focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
+        //generate updated metadata proof packet
+        let proof_cid = apply_request_with_proof(input, &proof, &updated);
+        let v = read_dag(&proof_cid);
+        let res = serde_json::from_slice(&v);
+        let packet: MetadataPacket = res.unwrap();
+        let current_packet = MetadataPacket({proof: proof});
+        let result =  vec![current_packet, packet]; 
+        result
     }
 }
 

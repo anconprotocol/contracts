@@ -2,13 +2,10 @@ package ethereum
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
-	"math/big"
+	"fmt"
 
-	"github.com/0xPolygon/polygon-sdk/helper/keccak"
-	"github.com/gochain/gochain/v3/accounts/abi/bind"
-	"github.com/gochain/web3"
+	"github.com/umbracle/go-web3/abi"
 )
 
 type Packet struct {
@@ -17,6 +14,18 @@ type Packet struct {
 	root  []byte
 	key   []byte
 	value []byte
+}
+
+func SignedProofAbiMethod() *abi.Method {
+
+	// uint256Type, _ := abi.NewType("uint256", "", nil)
+	m, err := abi.NewMethod("verifyProof(uint256[] ops,string proof, string root, string key, string value)")
+
+	if err != nil {
+		panic(err)
+	}
+
+	return m
 }
 
 type OnchainAdapter struct {
@@ -58,51 +67,77 @@ func encodeBytesString(v string) []byte {
 	return decoded
 }
 
+// func (adapter *OnchainAdapter) ApplyRequestWithProof(
+// 	ctx context.Context,
+// 	metadataCid string,
+// 	resultCid string,
+// 	fromOwner string,
+// 	toOwner string,
+// 	toAddress string,
+// 	tokenId string,
+// 	prefix string,
+// ) ([]byte, string, error) {
+
+// 	id := (tokenId)
+// 	var proof []byte
+// 	keccak.Keccak256(proof, encodePacked(
+// 		// Current metadata cid
+// 		[]byte(metadataCid),
+// 		// Current owner (opaque)
+// 		[]byte(fromOwner),
+// 		// Updated metadata cid
+// 		[]byte(resultCid),
+// 		// New owner address
+// 		[]byte(toOwner),
+// 		// Token Address
+// 		[]byte(toAddress),
+// 		// Token Id
+// 		[]byte(id),
+// 		// Contract Prefix
+// 		[]byte(prefix)))
+
+// 	unsignedProofData := encodePacked(
+// 		[]byte("\x19Ethereum Signed Message:\n32"),
+// 		// Proof
+// 		proof)
+
+// 	var hash []byte
+// 	keccak.Keccak256(hash, unsignedProofData)
+
+// 	return nil, resultCid, nil
+// }
+
 func (adapter *OnchainAdapter) ApplyRequestWithProof(
-	ctx context.Context,
-	metadataCid string,
-	resultCid string,
-	fromOwner string,
-	toOwner string,
-	toAddress string,
-	tokenId string,
-	prefix string,
-) ([]byte, string, error) {
+	updatedProof *EncodePackedExistenceProof,
+	value []byte,
+) ([]byte, error) {
 
-	id := (tokenId)
-	var proof []byte
-	keccak.Keccak256(proof, encodePacked(
-		// Current metadata cid
-		[]byte(metadataCid),
-		// Current owner (opaque)
-		[]byte(fromOwner),
-		// Updated metadata cid
-		[]byte(resultCid),
-		// New owner address
-		[]byte(toOwner),
-		// Token Address
-		[]byte(toAddress),
-		// Token Id
-		[]byte(id),
-		// Contract Prefix
-		[]byte(prefix)))
+	packet := &Packet{
+		ops: updatedProof.LeafOp,
+		proof: encodePacked(
+			updatedProof.Prefix,
+			updatedProof.InnerOpPrefix,
+			updatedProof.InnerOpSuffix,
+			i32tob((uint32(updatedProof.InnerOpHashOp))),
+		),
+		key:   updatedProof.Key,
+		value: value,
+	}
 
-	unsignedProofData := encodePacked(
-		[]byte("\x19Ethereum Signed Message:\n32"),
-		// Proof
-		proof)
+	signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
 
-	var hash []byte
-	keccak.Keccak256(hash, unsignedProofData)
+	if err != nil {
+		return nil, fmt.Errorf("packing for signature proof generation failed")
+	}
 
-	return nil, resultCid, nil
+	return signedProofData, nil
 }
 
-func (adapter *OnchainAdapter) VerifyProof(
+func (adapter *OnchainAdapter) GenerateVerificationProof(
 	proof *EncodePackedExistenceProof,
 	root []byte,
 	value []byte,
-) (bool, error) {
+) ([]byte, error) {
 
 	packet := &Packet{
 		ops: proof.LeafOp,
@@ -117,32 +152,13 @@ func (adapter *OnchainAdapter) VerifyProof(
 		value: value,
 	}
 
-	// signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
-
-	// if err != nil {
-	// 	return nil, "", fmt.Errorf("packing for signature proof generation failed")
-	// }
-	client, err := web3.Dial(adapter.HostAddress)
+	signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
 
 	if err != nil {
-		return false, err
+		return nil, fmt.Errorf("packing for signature proof generation failed")
 	}
 
-	// web3.
-	// client
-	ethCallSession := EthereumCallerSession{
-		Contract: &EthereumCaller{},
-		CallOpts: bind.CallOpts{
-			Pending:     false,
-			From:        [20]byte{},
-			BlockNumber: &big.Int{},
-			Context:     nil,
-		},
-	}
-
-	web3.CallConstantFunction(context.Background(), client, AnconVerifier)
-
-	return signedProofData, resultCid, nil
+	return signedProofData, nil
 }
 
 func i32tob(val uint32) []byte {

@@ -80,8 +80,8 @@ func (h *Host) GetImports() *wasmedge.ImportObject {
 	submit := wasmedge.NewFunction(WasmFuncType2, h.SubmitProof, nil, 0)
 	n.AddFunction("submit_proof_onchain", submit)
 
-	verify := wasmedge.NewFunction(WasmFuncType2, h.VerifyProof, nil, 0)
-	n.AddFunction("verify_proof_onchain", verify)
+	generate := wasmedge.NewFunction(WasmFuncType2, h.VerifyProof, nil, 0)
+	n.AddFunction("generate_dag_block_proof", generate)
 
 	ft := wasmedge.NewFunction(WasmFuncType2, h.FocusedTransformPatch, nil, 0)
 	n.AddFunction("focused_transform_patch", ft)
@@ -190,30 +190,55 @@ func (h *Host) WriteDagBlock(data interface{}, mem *wasmedge.Memory, params []in
 // Host functions
 func (h *Host) SubmitProof(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
 
+	var err error
 	arg1, err := mem.GetData(uint(params[1].(int32)), uint(params[2].(int32)))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-	/// Call function
-	// arg2, err := mem.GetData(uint(params[3].(int32)), uint(params[4].(int32)))
-	// if err != nil {
-	// 	return nil, wasmedge.Result_Fail
-	// }
+	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
-	n, err := sdk.Decode(basicnode.Prototype.Any, (string(arg1)))
-
-	cid := h.storage.Store(ipld.LinkContext{}, n)
+	abiIcs23Proof := h.adapter.MarshalProof(arg1)
+	lnk := strings.Split(string(abiIcs23Proof.Key), "/")
+	cid, err := sdk.ParseCidLink(lnk[4])
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 
-	bz := []byte(cid.String())
+	// path := string(arg2)
 
-	err = mem.SetData(bz, uint(params[0].(int32)), uint(len(bz)))
+	result, err := h.storage.Load(ipld.LinkContext{}, cid)
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 
+	block, err := sdk.Encode(result)
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+
+	var hashed []byte
+	value := keccak.Keccak256(hashed, []byte(block))
+	root, err := h.proof.Service.Hash(&emptypb.Empty{})
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
+
+	currentProofRootHash, err := jsonparser.GetString(root, "hash")
+
+	rootbz, err := base64.StdEncoding.DecodeString(currentProofRootHash)
+
+	ret := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
+	fmt.Println(ret, err)
+
+	bz := []byte("true")
+	if err != nil {
+		bz = []byte("false")
+	}
+
+	length := uint(len(bz))
+	x := i32tob(uint32(len(bz)))
+	mem.SetData(bz, uint(params[0].(int32)), length)
+	mem.SetData((x), uint(params[3].(int32)), length)
 	return nil, wasmedge.Result_Success
 }
 
@@ -319,7 +344,7 @@ func EncodeABIPacked(input ...[]byte) []byte {
 }
 
 // Host functions
-func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
+func (h *Host) GenerateProof(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
 
 	var err error
 	arg1, err := mem.GetData(uint(params[1].(int32)), uint(params[2].(int32)))
@@ -329,41 +354,11 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
 	abiIcs23Proof := h.adapter.MarshalProof(arg1)
-	lnk := strings.Split(string(abiIcs23Proof.Key), "/")
-	cid, err := sdk.ParseCidLink(lnk[4])
+
+	bz, err := json.Marshal(abiIcs23Proof)
+
 	if err != nil {
 		return nil, wasmedge.Result_Fail
-	}
-
-	// path := string(arg2)
-
-	result, err := h.storage.Load(ipld.LinkContext{}, cid)
-	if err != nil {
-		return nil, wasmedge.Result_Fail
-	}
-
-	block, err := sdk.Encode(result)
-	if err != nil {
-		return nil, wasmedge.Result_Fail
-	}
-
-	var hashed []byte
-	value := keccak.Keccak256(hashed, []byte(block))
-	root, err := h.proof.Service.Hash(&emptypb.Empty{})
-	if err != nil {
-		return nil, wasmedge.Result_Fail
-	}
-
-	currentProofRootHash, err := jsonparser.GetString(root, "hash")
-
-	rootbz, err := base64.StdEncoding.DecodeString(currentProofRootHash)
-
-	ret := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
-	fmt.Println(ret, err)
-
-	bz := []byte("true")
-	if err != nil {
-		bz = []byte("false")
 	}
 
 	length := uint(len(bz))

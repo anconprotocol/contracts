@@ -49,14 +49,13 @@ pub fn get_proof(cid: &str) -> String {
     }
 }
 
-pub fn verify_proof(data: &str) -> bool {
+pub fn generate_proof(cid: &str) -> String {
     unsafe {
         let s: i32 = 0;
-        let res = verify_proof_onchain(&data, &s);
+        let res = generate_dag_block_proof(&cid, &s);
         let x = s as usize;
         let v = &res[..x];
         let ok = String::from_utf8(v.to_vec()).unwrap();
-        ok == "true"
     }
 }
 
@@ -79,9 +78,6 @@ extern "C" {
     pub fn get_proof_by_cid(key: &str, ret: &i32) -> [u8; 1024];
 
     #[no_mangle]
-    pub fn verify_proof_onchain(key: &str, ret: &i32) -> [u8; 1024];
-
-    #[no_mangle]
     pub fn write_store(key: &str) -> [u8; 1024];
 
     #[no_mangle]
@@ -92,4 +88,7 @@ extern "C" {
 
     #[no_mangle]
     pub fn read_dag_block(cid: &str, ret: &i32) -> [u8; 1024];
+    
+    #[no_mangle]
+    pub fn generate_dag_block_proof(cid: &str, ret: &i32) -> [u8; 1024];
 }
