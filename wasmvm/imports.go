@@ -19,7 +19,6 @@ import (
 	"github.com/ipld/go-ipld-prime/must"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
-	"github.com/umbracle/go-web3"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/second-state/WasmEdge-go/wasmedge"
@@ -56,8 +55,8 @@ func NewEvmRelayHost(storage sdk.Storage,
 	proof *proofsignature.IavlProofAPI,
 	evmHostAddr string,
 	evmDestAddr string,
-	submitPacketWithProofAddr web3.Address,
-	validatorAddr web3.Address) *Host {
+	submitPacketWithProofAddr string,
+	validatorAddr string) *Host {
 
 	adapter := ethereum.NewOnchainAdapter("0x32A21c1bB6E7C20F547e930b53dAC57f42cd25F6", evmHostAddr, evmDestAddr, submitPacketWithProofAddr, validatorAddr)
 
@@ -358,7 +357,7 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 
 	rootbz, err := base64.StdEncoding.DecodeString(currentProofRootHash)
 
-	ret := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
+	ret, err := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
 	fmt.Println(ret, err)
 
 	bz := []byte("true")
