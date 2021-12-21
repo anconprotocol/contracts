@@ -1,12 +1,17 @@
 package wasmvm
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
+	"github.com/anconprotocol/contracts/adapters/ethereum"
 	"github.com/anconprotocol/sdk"
 	"github.com/anconprotocol/sdk/proofsignature"
+	"github.com/buger/jsonparser"
 	_ "github.com/confio/ics23/go"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
@@ -15,21 +20,16 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/umbracle/go-web3"
-	"github.com/umbracle/go-web3/abi"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/second-state/WasmEdge-go/wasmedge"
-	"github.com/umbracle/go-web3/contract"
-	"github.com/umbracle/go-web3/jsonrpc"
 )
 
 type Host struct {
-	storage   *sdk.Storage
-	proof     *proofsignature.IavlProofAPI
-	gsync     *graphsync.GraphExchange
-	evm       *jsonrpc.Client
-	verifier  *contract.Contract
-	submitter *contract.Contract
+	storage *sdk.Storage
+	proof   *proofsignature.IavlProofAPI
+	gsync   *graphsync.GraphExchange
+	adapter *ethereum.OnchainAdapter
 }
 
 var (
@@ -59,15 +59,7 @@ func NewEvmRelayHost(storage sdk.Storage,
 	submitPacketWithProofAddr web3.Address,
 	validatorAddr web3.Address) *Host {
 
-	client, err := jsonrpc.NewClient(evmHostAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	destinationClient, err := jsonrpc.NewClient(evmDestAddr)
-	if err != nil {
-		panic(err)
-	}
+	adapter := ethereum.NewOnchainAdapter("0x32A21c1bB6E7C20F547e930b53dAC57f42cd25F6", evmHostAddr, evmDestAddr, submitPacketWithProofAddr, validatorAddr)
 
 	lnk := sdk.CreateCidLink([]byte("merkle tree random root hash"))
 
@@ -75,32 +67,7 @@ func NewEvmRelayHost(storage sdk.Storage,
 	genesis = fmt.Sprintf("%s/%s", ROOT_PATH, lnk.String())
 	proof.Service.Set([]byte(genesis), lnk.Bytes())
 
-	fn, err := abi.NewABIFromList([]string{`
-	function verifyProof(
-        uint256[] memory leafOpUint,
-        bytes memory prefix,
-        bytes[][] memory existenceProofInnerOp,
-        uint256 existenceProofInnerOpHash,
-        bytes memory existenceProofKey,
-        bytes memory existenceProofValue,
-        bytes memory root,
-        bytes memory key,
-        bytes memory value
-    ) public pure returns (bool)`})
-	verifier := contract.NewContract(validatorAddr, fn, client)
-
-	submitFn, err := abi.NewABIFromList([]string{`
-    function submitPacketWithProof(
-        uint256[] memory leafOpUint,
-        bytes memory prefix,
-        bytes[][] memory existenceProofInnerOp,
-        uint256 existenceProofInnerOpHash,
-        bytes memory key,
-        bytes memory value,
-        bytes memory packet
-    ) public payable returns (bool)`})
-	submitter := contract.NewContract(submitPacketWithProofAddr, submitFn, destinationClient)
-	return &Host{storage: &storage, proof: proof, evm: client, verifier: verifier, submitter: submitter}
+	return &Host{storage: &storage, proof: proof, adapter: adapter}
 
 }
 
@@ -189,7 +156,9 @@ func (h *Host) WriteDagBlock(data interface{}, mem *wasmedge.Memory, params []in
 
 	n, err := sdk.Decode(basicnode.Prototype.Any, (string(arg1)))
 
-	cid := h.storage.Store(ipld.LinkContext{}, n)
+	cid := h.storage.Store(ipld.LinkContext{
+		LinkPath: ipld.ParsePath(genesis),
+	}, n)
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
@@ -344,6 +313,11 @@ func (h *Host) GetProofByCid(data interface{}, mem *wasmedge.Memory, params []in
 // #[no_mangle]
 // pub fn verify_proof_onchain(key: &str) -> [u8; 1024];
 
+// https://gist.github.com/miguelmota/bc4304bb21a8f4cc0a37a0f9347b8bbb
+func EncodeABIPacked(input ...[]byte) []byte {
+	return bytes.Join(input, nil)
+}
+
 // Host functions
 func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []interface{}) ([]interface{}, wasmedge.Result) {
 
@@ -352,14 +326,11 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-	abiIcs23Proof := encodePacked(arg1)
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 
-	b, err := h.evm.Eth().BlockNumber()
-	if err != nil {
-		return nil, wasmedge.Result_Fail
-	}
-	cid, err := sdk.ParseCidLink(string(abiIcs23Proof.Key))
+	abiIcs23Proof := h.adapter.MarshalProof(arg1)
+	lnk := strings.Split(string(abiIcs23Proof.Key), "/")
+	cid, err := sdk.ParseCidLink(lnk[4])
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
@@ -379,23 +350,17 @@ func (h *Host) VerifyProof(data interface{}, mem *wasmedge.Memory, params []inte
 	var hashed []byte
 	value := keccak.Keccak256(hashed, []byte(block))
 	root, err := h.proof.Service.Hash(&emptypb.Empty{})
-	ret, err := h.verifier.Call("verifyProof", web3.BlockNumber(b),
-		abiIcs23Proof.LeafOp,
-		abiIcs23Proof.Prefix,
-		abiIcs23Proof.InnerOp,
-		abiIcs23Proof.InnerOpHashOp,
-		abiIcs23Proof.Key,
-		abiIcs23Proof.Value,
-		root,
-		abiIcs23Proof.Key,
-		value)
-	// TODO: Verify proof onchain - smart contracts
-	// proof, err := h.proof.Service.GetWithProof(arg1)
-	// if err != nil {
-	// 	return nil, wasmedge.Result_Fail
-	// }
+	if err != nil {
+		return nil, wasmedge.Result_Fail
+	}
 
+	currentProofRootHash, err := jsonparser.GetString(root, "hash")
+
+	rootbz, err := base64.StdEncoding.DecodeString(currentProofRootHash)
+
+	ret := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
 	fmt.Println(ret, err)
+
 	bz := []byte("true")
 	if err != nil {
 		bz = []byte("false")
