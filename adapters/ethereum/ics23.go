@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"fmt"
+	"math/big"
 
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
-	"github.com/umbracle/go-web3"
-	"github.com/umbracle/go-web3/abi"
+	"github.com/gochain/gochain/v3/accounts/abi/bind"
+	"github.com/gochain/web3"
 )
 
 type Packet struct {
@@ -19,32 +19,20 @@ type Packet struct {
 	value []byte
 }
 
-func SignedProofAbiMethod() *abi.Method {
-
-	// uint256Type, _ := abi.NewType("uint256", "", nil)
-	m, err := abi.NewMethod("verifyProof(uint256[] ops,string proof, string root, string key, string value)")
-
-	if err != nil {
-		panic(err)
-	}
-
-	return m
-}
-
 type OnchainAdapter struct {
 	From                   string
 	HostAddress            string
 	DestinationHostAddress string
-	VerifierAddress        web3.Address
-	SubmitterAddress       web3.Address
+	VerifierAddress        string
+	SubmitterAddress       string
 	ChainName              string
 	ChainID                int
 }
 
 func NewOnchainAdapter(from string, evmHostAddr string,
 	evmDestAddr string,
-	submitPacketWithProofAddr web3.Address,
-	validatorAddr web3.Address) *OnchainAdapter {
+	submitPacketWithProofAddr string,
+	validatorAddr string) *OnchainAdapter {
 
 	return &OnchainAdapter{
 		From:                   from,
@@ -114,7 +102,7 @@ func (adapter *OnchainAdapter) VerifyProof(
 	proof *EncodePackedExistenceProof,
 	root []byte,
 	value []byte,
-) []byte {
+) (bool, error) {
 
 	packet := &Packet{
 		ops: proof.LeafOp,
@@ -128,14 +116,35 @@ func (adapter *OnchainAdapter) VerifyProof(
 		key:   proof.Key,
 		value: value,
 	}
-	signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
+
+	// signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
+
+	// if err != nil {
+	// 	return nil, "", fmt.Errorf("packing for signature proof generation failed")
+	// }
+	client, err := web3.Dial(adapter.HostAddress)
 
 	if err != nil {
-		return nil, "", fmt.Errorf("packing for signature proof generation failed")
+		return false, err
 	}
+
+	// web3.
+	// client
+	ethCallSession := EthereumCallerSession{
+		Contract: &EthereumCaller{},
+		CallOpts: bind.CallOpts{
+			Pending:     false,
+			From:        [20]byte{},
+			BlockNumber: &big.Int{},
+			Context:     nil,
+		},
+	}
+
+	web3.CallConstantFunction(context.Background(), client, AnconVerifier)
 
 	return signedProofData, resultCid, nil
 }
+
 func i32tob(val uint32) []byte {
 	r := make([]byte, 4)
 	for i := uint32(0); i < 4; i++ {
