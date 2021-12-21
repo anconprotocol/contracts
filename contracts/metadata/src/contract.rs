@@ -1,7 +1,7 @@
 use crate::sdk::focused_transform_patch_str;
 use crate::sdk::read_dag;
 use crate::sdk::submit_proof;
-use crate::sdk::{get_proof, read_dag_block, verify_proof, write_dag_block};
+use crate::sdk::{generate_proof, get_proof, read_dag_block, write_dag_block};
 use juniper::FieldResult;
 
 extern crate juniper;
@@ -33,7 +33,7 @@ pub struct MetadataPacket {
     pub to_owner: String,
     pub to_address: String,
     pub token_id: String,
-    pub proof: Vec<u8>,
+    pub proof: String,
 }
 
 #[graphql_object(context = Context)]
@@ -58,12 +58,11 @@ impl MetadataPacket {
     }
 
     fn token_id(&self) -> &str {
-        &self.id
+        &self.token_id
     }
-    fn proof(&self) -> &Vec<u8> {
-        &self.id
+    fn proof(&self) -> &str {
+        &self.proof
     }
-
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -135,17 +134,12 @@ pub struct Mutation;
 
 #[graphql_object(context = Context)]
 impl Mutation {
-    // async fn metadata(context: &Context, input: MetadataTransactionInput) -> FieldResult<Ancon721Metadata, Err<String> {
-    //     Ancon721Metadata{}
-    // }
     //Dagblock mutation
-    fn transfer(
-        context: &Context,
-        input: MetadataTransactionInput,
-    ) -> Vec<MetadataPacket> {
+    fn transfer(context: &Context, input: MetadataTransactionInput) -> Vec<MetadataPacket> {
         let v = read_dag(&input.cid);
         let res = serde_json::from_slice(&v);
         let metadata: Ancon721Metadata = res.unwrap();
+
         //generate current metadata proof packet
         let proof = generate_proof(&input.cid);
 
@@ -153,13 +147,22 @@ impl Mutation {
             focused_transform_patch_str(&input.cid, "owner", &metadata.owner, &input.new_owner);
         let updated =
             focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
+
         //generate updated metadata proof packet
         let proof_cid = apply_request_with_proof(input, &proof, &updated);
         let v = read_dag(&proof_cid);
         let res = serde_json::from_slice(&v);
         let packet: MetadataPacket = res.unwrap();
-        let current_packet = MetadataPacket({proof: proof});
-        let result =  vec![current_packet, packet]; 
+        let current_packet = MetadataPacket {
+            cid: input.cid,
+            from_owner: val,
+            result_cid: updated,
+            to_owner: val,
+            to_address: val,
+            token_id: val,
+            proof: proof,
+        };
+        let result = vec![current_packet, packet];
         result
     }
 }
