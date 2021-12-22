@@ -155,10 +155,10 @@ impl Mutation {
         let packet: MetadataPacket = res.unwrap();
         let current_packet = MetadataPacket {
             cid: input.cid,
-            from_owner: val,
+            from_owner: input.owner,
             result_cid: updated,
-            to_owner: val,
             to_address: val,
+            to_owner: input.new_owner,
             token_id: val,
             proof: proof,
         };
