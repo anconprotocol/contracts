@@ -157,9 +157,9 @@ impl Mutation {
             cid: input.cid,
             from_owner: input.owner,
             result_cid: updated,
-            to_address: val,
+            to_address: "".to_string(),
             to_owner: input.new_owner,
-            token_id: val,
+            token_id: "".to_string(),
             proof: proof,
         };
         let result = vec![current_packet, packet];
