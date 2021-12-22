@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-
+// to_address, cid, from(which eventually will be the to_addres), to_data(json[query,variables,operation_name]), resolve has to be json blob
 	dataFolder := ".ancon"
 	anconstorage := sdk.NewStorage(dataFolder)
 	db := dbm.NewMemDB()
