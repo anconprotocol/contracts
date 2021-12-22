@@ -14,6 +14,7 @@ type Packet struct {
 	root  []byte
 	key   []byte
 	value []byte
+	data  []byte
 }
 
 func SignedProofAbiMethod() *abi.Method {
@@ -110,6 +111,7 @@ func encodeBytesString(v string) []byte {
 func (adapter *OnchainAdapter) ApplyRequestWithProof(
 	updatedProof *EncodePackedExistenceProof,
 	value []byte,
+	data []byte,
 ) ([]byte, error) {
 
 	packet := &Packet{
@@ -122,6 +124,7 @@ func (adapter *OnchainAdapter) ApplyRequestWithProof(
 		),
 		key:   updatedProof.Key,
 		value: value,
+		data:  data,
 	}
 
 	signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)
@@ -150,6 +153,7 @@ func (adapter *OnchainAdapter) GenerateVerificationProof(
 		root:  root,
 		key:   proof.Key,
 		value: value,
+		data:  nil,
 	}
 
 	signedProofData, err := SignedProofAbiMethod().Inputs.Encode(packet)

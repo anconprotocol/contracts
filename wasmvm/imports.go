@@ -2,16 +2,13 @@ package wasmvm
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/0xPolygon/polygon-sdk/helper/keccak"
 	"github.com/anconprotocol/contracts/adapters/ethereum"
 	"github.com/anconprotocol/sdk"
 	"github.com/anconprotocol/sdk/proofsignature"
-	"github.com/buger/jsonparser"
 	_ "github.com/confio/ics23/go"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
@@ -19,7 +16,6 @@ import (
 	"github.com/ipld/go-ipld-prime/must"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
-	"github.com/umbracle/go-web3"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/second-state/WasmEdge-go/wasmedge"
@@ -52,22 +48,12 @@ var (
 	ROOT_PATH string = "/anconprotocol/onchain"
 )
 
-func NewEvmRelayHost(storage sdk.Storage,
+func NewEvmRelayHost(storage *sdk.Storage,
 	proof *proofsignature.IavlProofAPI,
-	evmHostAddr string,
-	evmDestAddr string,
-	submitPacketWithProofAddr web3.Address,
-	validatorAddr web3.Address) *Host {
+	adapter *ethereum.OnchainAdapter,
+) *Host {
 
-	adapter := ethereum.NewOnchainAdapter("0x32A21c1bB6E7C20F547e930b53dAC57f42cd25F6", evmHostAddr, evmDestAddr, submitPacketWithProofAddr, validatorAddr)
-
-	lnk := sdk.CreateCidLink([]byte("merkle tree random root hash"))
-
-	// genesis
-	genesis = fmt.Sprintf("%s/%s", ROOT_PATH, lnk.String())
-	proof.Service.Set([]byte(genesis), lnk.Bytes())
-
-	return &Host{storage: &storage, proof: proof, adapter: adapter}
+	return &Host{storage: storage, proof: proof, adapter: adapter}
 
 }
 
@@ -80,7 +66,7 @@ func (h *Host) GetImports() *wasmedge.ImportObject {
 	submit := wasmedge.NewFunction(WasmFuncType2, h.SubmitProof, nil, 0)
 	n.AddFunction("submit_proof_onchain", submit)
 
-	generate := wasmedge.NewFunction(WasmFuncType2, h.VerifyProof, nil, 0)
+	generate := wasmedge.NewFunction(WasmFuncType2, h.GenerateProof, nil, 0)
 	n.AddFunction("generate_dag_block_proof", generate)
 
 	ft := wasmedge.NewFunction(WasmFuncType2, h.FocusedTransformPatch, nil, 0)
@@ -198,12 +184,12 @@ func (h *Host) SubmitProof(data interface{}, mem *wasmedge.Memory, params []inte
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
 	var v map[string]string
 	json.Unmarshal(arg1, &v)
-	previous := v["previous"]
-	next_cid := v["next_cid"]
+	// previous := v["previous"]
+	payload := v["next_cid"]
 	packet := v["input"]
 
 	// copied from readDagblock
-	cid, err := sdk.ParseCidLink(string(next_cid))
+	cid, err := sdk.ParseCidLink(string(payload))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
@@ -220,19 +206,23 @@ func (h *Host) SubmitProof(data interface{}, mem *wasmedge.Memory, params []inte
 	}
 
 	var hashed []byte
-	r := keccak.Keccak256(hashed, block)
+	value := keccak.Keccak256(hashed, []byte(block))
 
 	// next
 	path := fmt.Sprintf("%s/%s", genesis, cid.String())
-	h.proof.Service.Set([]byte(path), r)
+	h.proof.Service.Set([]byte(path), value)
+
+	pathPacket := fmt.Sprintf("%s/%s/packet", genesis, cid.String())
+	h.proof.Service.Set([]byte(pathPacket), []byte(packet))
+	h.proof.Service.SaveVersion(&emptypb.Empty{})
 
 	proof, err := h.proof.Service.GetWithProof([]byte(path))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-	
+
 	abiIcs23Proof := h.adapter.MarshalProof(proof)
-	bz, err := h.adapter.ApplyRequestWithProof(abiIcs23Proof, r)
+	bz, err := h.adapter.ApplyRequestWithProof(abiIcs23Proof, value, []byte(packet))
 
 	length := uint(len(bz))
 	x := i32tob(uint32(len(bz)))

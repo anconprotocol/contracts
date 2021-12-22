@@ -10,7 +10,6 @@ import (
 	"github.com/anconprotocol/sdk/proofsignature"
 	"github.com/second-state/WasmEdge-go/wasmedge"
 	dbm "github.com/tendermint/tm-db"
-	"github.com/umbracle/go-web3"
 )
 
 func main() {
@@ -20,13 +19,9 @@ func main() {
 	db := dbm.NewMemDB()
 
 	proofs, _ := proofsignature.NewIavlAPI(anconstorage, nil, db, 2000, 0)
-	homeChain := "http://localhost:8545"
-	destinationChain := "http://localhost:8546"
 
-	verifier := web3.BytesToAddress([]byte("0x5CfbeE83299024331FFB87fa0E6a311f8692C238"))
-	submitter := web3.BytesToAddress([]byte("0x29F4BA75B8BD3CF70a853271E0351e9dA4112AC3"))
 	// todo: implement root updater and chain interface
-	host := wasmvm.NewEvmRelayHost(anconstorage, proofs, homeChain, destinationChain, submitter, verifier)
+	host := wasmvm.NewEvmRelayHost(&anconstorage, proofs, nil)
 	wasmedge.SetLogErrorLevel()
 
 	/// Create configure
@@ -86,4 +81,4 @@ func main() {
 	vm.Release()
 
 	conf.Release()
-	}
+}

@@ -12,7 +12,7 @@ require (
 	github.com/0xPolygon/polygon-sdk v0.0.0-20211207172349-a9ee5ed12815
 	github.com/99designs/gqlgen v0.14.0
 	github.com/Yamashou/gqlgenc v0.0.2
-	github.com/anconprotocol/sdk v0.0.0-20211220175629-81de6df5eda5
+	github.com/anconprotocol/sdk v0.1.3
 	github.com/ipld/go-ipld-prime v0.14.0
 	github.com/umbracle/go-web3 v0.0.0-20211208145232-a62dc1e205cc
 	github.com/vektah/gqlparser/v2 v2.2.0
@@ -23,21 +23,21 @@ require (
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/confio/ics23/go v0.6.6
 	github.com/gochain/gochain/v3 v3.4.6
-	github.com/gochain/web3 v0.2.72
 	github.com/ipfs/go-graphsync v0.9.3
 	github.com/second-state/WasmEdge-go v0.9.0
 	github.com/tendermint/tm-db v0.6.6
-	google.golang.org/protobuf v1.27.1
 )
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20210319202508-5b0c587084ea // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cosmos/cosmos-sdk v0.44.3 // indirect
@@ -117,7 +117,6 @@ require (
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
@@ -149,6 +148,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210917145530-b395a37504d4 // indirect
 	google.golang.org/grpc v1.42.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

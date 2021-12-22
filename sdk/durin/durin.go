@@ -1,13 +1,17 @@
 package durin
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
-	"github.com/anconprotocol/contracts/adapters/ethereum/erc721/transfer"
-	graphqlclient "github.com/anconprotocol/contracts/graphql/client"
+	"github.com/anconprotocol/contracts/adapters/ethereum"
 	"github.com/anconprotocol/contracts/hexutil"
+	"github.com/anconprotocol/contracts/wasmvm"
+	"github.com/anconprotocol/sdk"
+	"github.com/anconprotocol/sdk/proofsignature"
+	"github.com/ipld/go-ipld-prime/linking"
+	"github.com/second-state/WasmEdge-go/wasmedge"
 )
 
 type DurinAPI struct {
@@ -18,76 +22,84 @@ type DurinAPI struct {
 }
 
 type DurinService struct {
-	Adapter   *transfer.OnchainAdapter
-	GqlClient *graphqlclient.Client
+	Adapter *ethereum.OnchainAdapter
+	Storage *sdk.Storage
+	Proof   *proofsignature.IavlProofAPI
+	Host    *wasmvm.Host
+	wasm    *wasmedge.VM
 }
 
-func NewDurinAPI(evm transfer.OnchainAdapter, gqlClient *graphqlclient.Client) *DurinAPI {
+func NewDurinAPI(adapter *ethereum.OnchainAdapter, storage *sdk.Storage, proof *proofsignature.IavlProofAPI) *DurinAPI {
+
+	host := wasmvm.NewEvmRelayHost(storage, proof, adapter)
+
+	wasmedge.SetLogErrorLevel()
+
+	/// Create configure
+	var conf = wasmedge.NewConfigure(wasmedge.WASI)
+
+	/// Create VM with configure
+	var vm = wasmedge.NewVMWithConfig(conf)
+
+	/// Init WASI
+	var wasi = vm.GetImportObject(wasmedge.WASI)
+	wasi.InitWasi(
+		os.Args[1:],     /// The args
+		os.Environ(),    /// The envs
+		[]string{".:."}, /// The mapping preopens
+	)
+
+	vm.RegisterImport(host.GetImports())
+
 	return &DurinAPI{
 		Namespace: "durin",
 		Version:   "1.0",
 		Service: &DurinService{
-			Adapter:   &evm,
-			GqlClient: gqlClient,
+			Adapter: adapter,
+			Storage: storage,
+			Proof:   proof,
+			Host:    host,
+			wasm:    vm,
 		},
 		Public: true,
 	}
 }
 
-func msgHandler(ctx *DurinService, to string, name string, args map[string]string) (hexutil.Bytes, string, error) {
-	switch name {
-	default:
-		tokenId := args["tokenId"]
-		input := graphqlclient.MetadataTransactionInput{
-			Path:     "/",
-			Cid:      args["metadataCid"],
-			Owner:    args["fromOwner"],
-			NewOwner: args["toOwner"],
-		}
-		// Send graphql mutation for IPLD DAG computing
-		res, err := ctx.GqlClient.TransferOwnership(context.Background(), input)
-		if err != nil {
-			return nil, "", fmt.Errorf("transfer ownership reverted")
-		}
-		metadataCid := args["metadataCid"]
-		newCid := res.Metadata.Cid
-		newOwner := args["toOwner"]
-		fromOwner := args["fromOwner"]
-		prefix := args["prefix"]
+func (s *DurinService) Call(to string, from string, data string) hexutil.Bytes {
 
-		// Apply signature to create proof
-		txdata, resultCid, err := ctx.Adapter.ApplyRequestWithProof(context.Background(),
-			metadataCid,
-			newCid,
-			fromOwner,
-			newOwner,
-			to,
-			tokenId,
-			prefix)
-		if err != nil {
-			return nil, "", fmt.Errorf("request with proof raw tx failed")
-		}
-		return txdata, resultCid, nil
-	}
-					}
-
-func (s *DurinService) Call(to string, from string, data json.RawMessage, abis json.RawMessage) hexutil.Bytes {
-
-	p := []byte(data)
-	var values map[string]string
 	val := make(map[string]string, 2)
-	err := json.Unmarshal(p, &values)
+
+	payload, err := hexutil.Decode(data)
+
 	if err != nil {
 		return hexutil.Bytes(hexutil.Encode([]byte(fmt.Errorf("fail unpack data").Error())))
 	}
 	// Execute graphql
-	txdata, resultCid, err := msgHandler(s, to, "", values)
+	toClink, err := sdk.ParseCidLink(to)
 	if err != nil {
-		return hexutil.Bytes(hexutil.Encode([]byte(fmt.Errorf("reverted").Error())))
+
 	}
 
-	val["txdata"] = txdata.String()
-	val["resultCid"] = resultCid
+	dataNode, err := s.Storage.Load(linking.LinkContext{}, toClink)
+	if err != nil {
+
+	}
+	dataDecoded, _ := sdk.Encode(dataNode)
+	err = s.wasm.LoadWasmBuffer([]byte(dataDecoded))
+	if err != nil {
+
+	}
+	//TODO Validate user signature
+	s.wasm.Validate()
+	s.wasm.Instantiate()
+	res, err := s.wasm.ExecuteBindgen("execute", wasmedge.Bindgen_return_array, payload)
+	if err != nil {
+
+	}
+
+	s.wasm.Cleanup()
+
+	val["result"] = string(res.([]byte))
 	jsonval, err := json.Marshal(val)
 	if err != nil {
 		return hexutil.Bytes(hexutil.Encode([]byte(fmt.Errorf("reverted, json marshal").Error())))
