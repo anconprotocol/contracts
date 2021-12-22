@@ -196,16 +196,19 @@ func (h *Host) SubmitProof(data interface{}, mem *wasmedge.Memory, params []inte
 		return nil, wasmedge.Result_Fail
 	}
 	// gas, err := h.verifier.EstimateGas("verifyProof", abiIcs23Proof)
+	var v map[string]string
+	json.Unmarshal(arg1, &v)
+	previous := v["previous"]
+	next_cid := v["next_cid"]
+	packet := v["input"]
 
-	abiIcs23Proof := h.adapter.MarshalProof(arg1)
-	lnk := strings.Split(string(abiIcs23Proof.Key), "/")
-	cid, err := sdk.ParseCidLink(lnk[4])
+	// copied from readDagblock
+	cid, err := sdk.ParseCidLink(string(next_cid))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
 
 	// path := string(arg2)
-
 	result, err := h.storage.Load(ipld.LinkContext{}, cid)
 	if err != nil {
 		return nil, wasmedge.Result_Fail
@@ -217,23 +220,19 @@ func (h *Host) SubmitProof(data interface{}, mem *wasmedge.Memory, params []inte
 	}
 
 	var hashed []byte
-	value := keccak.Keccak256(hashed, []byte(block))
-	root, err := h.proof.Service.Hash(&emptypb.Empty{})
+	r := keccak.Keccak256(hashed, block)
+
+	// next
+	path := fmt.Sprintf("%s/%s", genesis, cid.String())
+	h.proof.Service.Set([]byte(path), r)
+
+	proof, err := h.proof.Service.GetWithProof([]byte(path))
 	if err != nil {
 		return nil, wasmedge.Result_Fail
 	}
-
-	currentProofRootHash, err := jsonparser.GetString(root, "hash")
-
-	rootbz, err := base64.StdEncoding.DecodeString(currentProofRootHash)
-
-	ret := h.adapter.VerifyProof(abiIcs23Proof, rootbz, value)
-	fmt.Println(ret, err)
-
-	bz := []byte("true")
-	if err != nil {
-		bz = []byte("false")
-	}
+	
+	abiIcs23Proof := h.adapter.MarshalProof(proof)
+	bz, err := h.adapter.ApplyRequestWithProof(abiIcs23Proof, r)
 
 	length := uint(len(bz))
 	x := i32tob(uint32(len(bz)))

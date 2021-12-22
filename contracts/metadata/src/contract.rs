@@ -191,7 +191,7 @@ fn apply_request_with_proof(
     let js = json!({
         "previous": prev_proof,
         "next_cid": new_cid,
-        "inpur": input
+        "input": input
     });
     submit_proof(&js.to_string())
 }
