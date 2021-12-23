@@ -56,6 +56,7 @@ pub fn generate_proof(cid: &str) -> String {
         let x = s as usize;
         let v = &res[..x];
         let ok = String::from_utf8(v.to_vec()).unwrap();
+        ok
     }
 }
 

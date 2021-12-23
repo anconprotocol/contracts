@@ -149,7 +149,7 @@ impl Mutation {
             focused_transform_patch_str(&updated_cid, "parent", &metadata.parent, &input.cid);
 
         //generate updated metadata proof packet
-        let proof_cid = apply_request_with_proof(input, &proof, &updated);
+        let proof_cid = apply_request_with_proof(input.clone(), &proof, &updated);
         let v = read_dag(&proof_cid);
         let res = serde_json::from_slice(&v);
         let packet: MetadataPacket = res.unwrap();
