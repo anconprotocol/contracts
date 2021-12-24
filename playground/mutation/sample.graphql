@@ -1,5 +1,0 @@
-mutation transferOwnership($tx: MetadataTransactionInput!) {
-  metadata(tx: $tx) {
-    cid
-  }
-}
